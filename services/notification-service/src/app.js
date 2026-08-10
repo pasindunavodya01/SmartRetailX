@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./config/swagger');
+
 const notificationRoutes = require('./routes/notification.routes');
 
 const app = express();
@@ -16,5 +19,7 @@ app.get('/api/v1/health', (req, res) => {
 });
 
 app.use('/api/v1/notifications', notificationRoutes);
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 module.exports = app;
