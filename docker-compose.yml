@@ -1,0 +1,20 @@
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: smartretailx-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: smartretailx
+      POSTGRES_PASSWORD: smartretailx_dev_password
+      POSTGRES_DB: smartretailx
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
