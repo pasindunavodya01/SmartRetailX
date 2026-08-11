@@ -26,15 +26,12 @@ $afterOrder = Get-Stock "AFTER ORDER"
 
 # 4. Cancel order  -- ADJUST THIS ENDPOINT/METHOD TO MATCH YOUR API
 try {
-    $cancelUrl = "$ordersBase/$($order.id)/cancel"
-    $cancelled = Invoke-RestMethod -Uri $cancelUrl -Headers $headers -Method Patch
+    $cancelUrl = "$ordersBase/$($order.id)/status"
+    $cancelBody = @{ status = "CANCELLED" } | ConvertTo-Json
+    $cancelled = Invoke-RestMethod -Uri $cancelUrl -Headers $headers -Method Patch -Body $cancelBody
     Write-Host "Order cancelled: status=$($cancelled.status)" -ForegroundColor Yellow
 } catch {
-    Write-Host "Cancel via PATCH /cancel failed: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "Trying PUT with status=CANCELLED instead..." -ForegroundColor Yellow
-    $cancelBody = @{ status = "CANCELLED" } | ConvertTo-Json
-    $cancelled = Invoke-RestMethod -Uri "$ordersBase/$($order.id)" -Headers $headers -Method Put -Body $cancelBody
-    Write-Host "Order cancelled: status=$($cancelled.status)" -ForegroundColor Yellow
+    Write-Host "Cancel via PATCH /status failed: $($_.Exception.Message)" -ForegroundColor Red
 }
 
 # 5. Stock after cancel
@@ -42,7 +39,7 @@ $afterCancel = Get-Stock "AFTER CANCEL"
 
 # 6. Idempotency check - cancel again, stock should NOT change further
 try {
-    Invoke-RestMethod -Uri $cancelUrl -Headers $headers -Method Patch | Out-Null
+    Invoke-RestMethod -Uri $cancelUrl -Headers $headers -Method Patch -Body $cancelBody | Out-Null
 } catch {
     Write-Host "Second cancel attempt rejected (expected if idempotent): $($_.Exception.Message)" -ForegroundColor Green
 }
