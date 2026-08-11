@@ -18,9 +18,9 @@ const createProduct = async (req, res) => {
     try {
         const { sku, name, price } = req.body;
 
-        if (!sku || !name || !price) {
+        if (!sku || !name || price === undefined || isNaN(Number(price)) || Number(price) <= 0) {
             return res.status(400).json({
-                message: 'SKU, name, and price are required'
+                message: 'SKU, name, and a valid positive price are required'
             });
         }
 
@@ -87,9 +87,25 @@ const updateProduct = async (req, res) => {
         const { sku, name, price } = req.body;
         const data = {};
 
-        if (sku) data.sku = sku;
-        if (name) data.name = name;
-        if (price) data.price = Number(price);
+        if (sku !== undefined) {
+            if (typeof sku !== 'string' || sku.trim() === '') {
+                return res.status(400).json({ message: 'SKU cannot be empty' });
+            }
+            data.sku = sku;
+        }
+        if (name !== undefined) {
+            if (typeof name !== 'string' || name.trim() === '') {
+                return res.status(400).json({ message: 'Name cannot be empty' });
+            }
+            data.name = name;
+        }
+        if (price !== undefined) {
+            const numericPrice = Number(price);
+            if (isNaN(numericPrice) || numericPrice <= 0) {
+                return res.status(400).json({ message: 'Price must be a positive number' });
+            }
+            data.price = numericPrice;
+        }
 
         if (Object.keys(data).length === 0) {
             return res.status(400).json({ message: 'No update fields provided' });
@@ -178,22 +194,21 @@ const consumeInventory = async (req, res) => {
             return res.status(400).json({ message: 'SKU and a positive quantity are required' });
         }
 
-        const stockItem = await prisma.inventoryItem.findUnique({
-            where: { sku },
-            include: { product: true }
+        const result = await prisma.inventoryItem.updateMany({
+            where: { sku, stock: { gte: quantity } },
+            data: { stock: { decrement: quantity } }
         });
 
-        if (!stockItem) {
-            return res.status(404).json({ message: 'Inventory entry not found' });
-        }
-
-        if (stockItem.stock < quantity) {
+        if (result.count === 0) {
+            const exists = await prisma.inventoryItem.findUnique({ where: { sku } });
+            if (!exists) {
+                return res.status(404).json({ message: 'Inventory entry not found' });
+            }
             return res.status(409).json({ message: 'Insufficient stock' });
         }
 
-        const updatedInventory = await prisma.inventoryItem.update({
+        const updatedInventory = await prisma.inventoryItem.findUnique({
             where: { sku },
-            data: { stock: stockItem.stock - quantity },
             include: { product: true }
         });
 
@@ -224,7 +239,7 @@ const releaseInventory = async (req, res) => {
 
         const updatedInventory = await prisma.inventoryItem.update({
             where: { sku },
-            data: { stock: stockItem.stock + quantity }
+            data: { stock: { increment: quantity } }
         });
 
         res.status(200).json(updatedInventory);

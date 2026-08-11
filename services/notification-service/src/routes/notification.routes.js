@@ -25,7 +25,7 @@ const router = express.Router();
  *       201:
  *         description: Notification created
  */
-router.post('/internal', createInternalNotification);
+router.post('/internal/notifications', createInternalNotification);
 
 /**
  * @swagger
@@ -45,7 +45,7 @@ router.post('/internal', createInternalNotification);
  *       200:
  *         description: List of notifications
  */
-router.get('/users/:userId', authenticate, getNotificationsByUser);
+router.get('/notifications/users/:userId', authenticate, getNotificationsByUser);
 
 /**
  * @swagger
@@ -59,7 +59,7 @@ router.get('/users/:userId', authenticate, getNotificationsByUser);
  *       200:
  *         description: List of notifications
  */
-router.get('/', authenticate, listNotifications);
+router.get('/notifications', authenticate, listNotifications);
 
 /**
  * @swagger
@@ -73,7 +73,7 @@ router.get('/', authenticate, listNotifications);
  *       201:
  *         description: Notification created
  */
-router.post('/', authenticate, authorize('ADMIN'), createNotification);
+router.post('/notifications', authenticate, authorize('ADMIN'), createNotification);
 
 /**
  * @swagger
@@ -93,7 +93,7 @@ router.post('/', authenticate, authorize('ADMIN'), createNotification);
  *       200:
  *         description: Notification details
  */
-router.get('/:id', authenticate, getNotificationById);
+router.get('/notifications/:id', authenticate, getNotificationById);
 
 /**
  * @swagger
@@ -113,7 +113,7 @@ router.get('/:id', authenticate, getNotificationById);
  *       200:
  *         description: Notification updated
  */
-router.patch('/:id/read', authenticate, markNotificationRead);
+router.patch('/notifications/:id/read', authenticate, markNotificationRead);
 
 /**
  * @swagger
@@ -133,7 +133,7 @@ router.patch('/:id/read', authenticate, markNotificationRead);
  *       200:
  *         description: Notification updated
  */
-router.put('/:id', authenticate, authorize('ADMIN'), updateNotification);
+router.put('/notifications/:id', authenticate, authorize('ADMIN'), updateNotification);
 
 /**
  * @swagger
@@ -153,6 +153,6 @@ router.put('/:id', authenticate, authorize('ADMIN'), updateNotification);
  *       204:
  *         description: Notification deleted
  */
-router.delete('/:id', authenticate, authorize('ADMIN'), deleteNotification);
+router.delete('/notifications/:id', authenticate, authorize('ADMIN'), deleteNotification);
 
 module.exports = router;

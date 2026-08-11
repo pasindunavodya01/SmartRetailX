@@ -35,13 +35,13 @@ describe('Notification API', () => {
         expect(response.body.items[0].message).toBe('Test message');
     });
 
-    test('POST /api/v1/notifications/internal should create internal notification without token', async () => {
+    test('POST /api/v1/internal/notifications should create internal notification without token', async () => {
         prisma.notification.create.mockResolvedValue({
             id: '2', userId: 'user-2', message: 'Internal', type: 'INFO'
         });
 
         const response = await request(app)
-            .post('/api/v1/notifications/internal')
+            .post('/api/v1/internal/notifications')
             .send({
                 userId: 'user-2',
                 message: 'Internal',

@@ -77,6 +77,10 @@ const createInternalNotification = async (req, res) => {
 
 const getNotificationsByUser = async (req, res) => {
     try {
+        if (req.user?.role !== 'ADMIN' && req.params.userId !== req.user?.sub) {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+
         const notifications = await prisma.notification.findMany({
             where: { userId: req.params.userId },
             orderBy: { createdAt: 'desc' }
@@ -112,6 +116,18 @@ const getNotificationById = async (req, res) => {
 
 const markNotificationRead = async (req, res) => {
     try {
+        const existing = await prisma.notification.findUnique({
+            where: { id: Number(req.params.id) }
+        });
+
+        if (!existing) {
+            return res.status(404).json({ message: 'Notification not found' });
+        }
+
+        if (req.user?.role !== 'ADMIN' && existing.userId !== req.user?.sub) {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+
         const notification = await prisma.notification.update({
             where: { id: Number(req.params.id) },
             data: { isRead: true }

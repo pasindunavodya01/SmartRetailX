@@ -85,7 +85,7 @@ router.put('/:id', authenticate, updateOrder);
  * @swagger
  * /api/v1/orders/{id}/status:
  *   patch:
- *     summary: Update order status (Admin)
+ *     summary: Update order status (Admin) or Cancel (Customer)
  *     tags: [Orders]
  *     security:
  *       - bearerAuth: []
@@ -99,7 +99,7 @@ router.put('/:id', authenticate, updateOrder);
  *       200:
  *         description: Order status updated
  */
-router.patch('/:id/status', authenticate, authorize('ADMIN'), updateOrderStatus);
+router.patch('/:id/status', authenticate, updateOrderStatus);
 
 /**
  * @swagger

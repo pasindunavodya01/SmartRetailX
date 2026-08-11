@@ -155,30 +155,26 @@ router.post('/inventory/adjust', authenticate, authorize('ADMIN'), adjustInvento
 
 /**
  * @swagger
- * /api/v1/inventory/consume:
+ * /api/v1/internal/inventory/consume:
  *   post:
- *     summary: Consume inventory
+ *     summary: Consume inventory (Internal)
  *     tags: [Inventory]
- *     security:
- *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Inventory consumed
  */
-router.post('/inventory/consume', authenticate, consumeInventory);
+router.post('/internal/inventory/consume', consumeInventory);
 
 /**
  * @swagger
- * /api/v1/inventory/release:
+ * /api/v1/internal/inventory/release:
  *   post:
- *     summary: Release inventory
+ *     summary: Release inventory (Internal)
  *     tags: [Inventory]
- *     security:
- *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Inventory released
  */
-router.post('/inventory/release', authenticate, releaseInventory);
+router.post('/internal/inventory/release', releaseInventory);
 
 module.exports = router;

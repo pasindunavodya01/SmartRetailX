@@ -10,7 +10,7 @@ const PRODUCT_INVENTORY_SERVICE_URL = process.env.PRODUCT_INVENTORY_SERVICE_URL 
 const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3002';
 
 const consumeInventory = async (sku, quantity) => {
-    const response = await fetch(`${PRODUCT_INVENTORY_SERVICE_URL}/api/v1/inventory/consume`, {
+    const response = await fetch(`${PRODUCT_INVENTORY_SERVICE_URL}/api/v1/internal/inventory/consume`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sku, quantity })
@@ -25,7 +25,7 @@ const consumeInventory = async (sku, quantity) => {
 };
 
 const releaseInventory = async (sku, quantity) => {
-    const response = await fetch(`${PRODUCT_INVENTORY_SERVICE_URL}/api/v1/inventory/release`, {
+    const response = await fetch(`${PRODUCT_INVENTORY_SERVICE_URL}/api/v1/internal/inventory/release`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sku, quantity })
@@ -41,7 +41,7 @@ const releaseInventory = async (sku, quantity) => {
 
 const notifyCustomer = async (userId, message, type = 'INFO') => {
     try {
-        await fetch(`${NOTIFICATION_SERVICE_URL}/api/v1/notifications/internal`, {
+        await fetch(`${NOTIFICATION_SERVICE_URL}/api/v1/internal/notifications`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, message, type })
@@ -72,7 +72,12 @@ const listOrders = async (req, res) => {
 
 const createOrder = async (req, res) => {
     try {
-        const { customerId, items } = req.body;
+        const { items } = req.body;
+        let customerId = req.user?.sub;
+
+        if (req.user?.role === 'ADMIN' && req.body.customerId) {
+            customerId = req.body.customerId;
+        }
 
         if (!customerId || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({
@@ -158,14 +163,17 @@ const getOrderById = async (req, res) => {
 
 const updateOrder = async (req, res) => {
     try {
-        const { customerId, status } = req.body;
+        if (req.user?.role !== 'ADMIN') {
+            return res.status(403).json({ message: 'Only admins can update order details' });
+        }
+
+        const { customerId } = req.body;
         const data = {};
 
         if (customerId) data.customerId = customerId;
-        if (status) data.status = normalizeStatus(status);
 
         if (Object.keys(data).length === 0) {
-            return res.status(400).json({ message: 'No update fields provided' });
+            return res.status(400).json({ message: 'No valid update fields provided (use /status for status updates)' });
         }
 
         const order = await prisma.order.update({
@@ -173,17 +181,6 @@ const updateOrder = async (req, res) => {
             data,
             include: { items: true }
         });
-
-        if (status && normalizeStatus(status) === 'CANCELLED') {
-            const orderItems = await prisma.orderItem.findMany({ where: { orderId: order.id } });
-            for (const item of orderItems) {
-                const response = await fetch(`${PRODUCT_INVENTORY_SERVICE_URL}/api/v1/products/${item.productId}`);
-                if (response.ok) {
-                    const product = await response.json();
-                    await releaseInventory(product.sku, item.quantity);
-                }
-            }
-        }
 
         res.status(200).json(order);
     } catch (error) {
@@ -208,6 +205,15 @@ const updateOrderStatus = async (req, res) => {
 
         if (!currentOrder) {
             return res.status(404).json({ message: 'Order not found' });
+        }
+
+        if (req.user?.role !== 'ADMIN') {
+            if (currentOrder.customerId !== req.user?.sub) {
+                return res.status(403).json({ message: 'Access denied' });
+            }
+            if (normalizedStatus !== 'CANCELLED') {
+                return res.status(403).json({ message: 'Customers can only cancel orders' });
+            }
         }
 
         if (normalizedStatus === 'CANCELLED' && currentOrder.status !== 'CANCELLED') {

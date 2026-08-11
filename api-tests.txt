@@ -50,11 +50,11 @@ curl http://localhost:3004/api/v1/inventory -H "Authorization: Bearer <YOUR_TOKE
 # Adjust Inventory (Requires ADMIN)
 curl -X POST http://localhost:3004/api/v1/inventory/adjust -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"productId\":\"<PRODUCT_ID>\",\"quantity\":50,\"reason\":\"Restock\"}"
 
-# Consume Inventory
-curl -X POST http://localhost:3004/api/v1/inventory/consume -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"productId\":\"<PRODUCT_ID>\",\"quantity\":1,\"orderId\":\"<ORDER_ID>\"}"
+# Consume Inventory (Internal Endpoint)
+curl -X POST http://localhost:3004/api/v1/internal/inventory/consume -H "Content-Type: application/json" -d "{\"sku\":\"<PRODUCT_SKU>\",\"quantity\":1,\"orderId\":\"<ORDER_ID>\"}"
 
-# Release Inventory
-curl -X POST http://localhost:3004/api/v1/inventory/release -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"productId\":\"<PRODUCT_ID>\",\"quantity\":1,\"orderId\":\"<ORDER_ID>\"}"
+# Release Inventory (Internal Endpoint)
+curl -X POST http://localhost:3004/api/v1/internal/inventory/release -H "Content-Type: application/json" -d "{\"sku\":\"<PRODUCT_SKU>\",\"quantity\":1,\"orderId\":\"<ORDER_ID>\"}"
 
 
 === ORDER SERVICE (PORT 3003) ===
@@ -71,11 +71,11 @@ curl -X POST http://localhost:3003/api/v1/orders -H "Authorization: Bearer <YOUR
 # Get Order by ID
 curl http://localhost:3003/api/v1/orders/<ORDER_ID> -H "Authorization: Bearer <YOUR_TOKEN>"
 
-# Update Order
-curl -X PUT http://localhost:3003/api/v1/orders/<ORDER_ID> -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"shippingAddress\":\"456 New St\"}"
+# Update Order (Requires ADMIN)
+curl -X PUT http://localhost:3003/api/v1/orders/<ORDER_ID> -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"customerId\":\"<NEW_CUSTOMER_ID>\"}"
 
-# Update Order Status (Requires ADMIN)
-curl -X PATCH http://localhost:3003/api/v1/orders/<ORDER_ID>/status -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"status\":\"SHIPPED\"}"
+# Update Order Status (ADMIN can set any status, Customer can only CANCEL their own)
+curl -X PATCH http://localhost:3003/api/v1/orders/<ORDER_ID>/status -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"status\":\"CANCELLED\"}"
 
 # Delete Order
 curl -X DELETE http://localhost:3003/api/v1/orders/<ORDER_ID> -H "Authorization: Bearer <YOUR_TOKEN>"
@@ -87,7 +87,7 @@ curl -X DELETE http://localhost:3003/api/v1/orders/<ORDER_ID> -H "Authorization:
 curl http://localhost:3002/api/v1/health
 
 # Create Internal Notification
-curl -X POST http://localhost:3002/api/v1/notifications/internal -H "Content-Type: application/json" -d "{\"userId\":\"<USER_ID>\",\"type\":\"SYSTEM_ALERT\",\"message\":\"System restart initiated.\"}"
+curl -X POST http://localhost:3002/api/v1/internal/notifications -H "Content-Type: application/json" -d "{\"userId\":\"<USER_ID>\",\"type\":\"SYSTEM_ALERT\",\"message\":\"System restart initiated.\"}"
 
 # Get Notifications by User
 curl http://localhost:3002/api/v1/notifications/users/<USER_ID> -H "Authorization: Bearer <YOUR_TOKEN>"
