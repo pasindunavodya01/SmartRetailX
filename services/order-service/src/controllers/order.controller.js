@@ -218,10 +218,14 @@ const updateOrderStatus = async (req, res) => {
 
         if (normalizedStatus === 'CANCELLED' && currentOrder.status !== 'CANCELLED') {
             for (const item of currentOrder.items) {
-                const response = await fetch(`${PRODUCT_INVENTORY_SERVICE_URL}/api/v1/products/${item.productId}`);
+                const response = await fetch(`${PRODUCT_INVENTORY_SERVICE_URL}/api/v1/products/${item.productId}`, {
+                    headers: { 'Authorization': req.headers.authorization }
+                });
                 if (response.ok) {
                     const product = await response.json();
                     await releaseInventory(product.sku, item.quantity);
+                } else {
+                    console.error(`Failed to fetch product ${item.productId} for inventory release. Status: ${response.status}`);
                 }
             }
         }
