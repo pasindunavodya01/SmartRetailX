@@ -1,0 +1,111 @@
+=========================================================
+SMARTRETAILX API TESTS
+Replace <YOUR_TOKEN>, <PRODUCT_ID>, <ORDER_ID>, <USER_ID>, <NOTIFICATION_ID> with actual IDs/Tokens as needed.
+=========================================================
+
+=== USER SERVICE (PORT 3001) ===
+
+# Health Check
+curl http://localhost:3001/api/v1/health
+
+# Register User
+curl -X POST http://localhost:3001/api/v1/auth/register -H "Content-Type: application/json" -d "{\"email\":\"dockeruser@smartretailx.com\",\"password\":\"Password123!\",\"firstName\":\"Docker\",\"lastName\":\"User\"}"
+
+# Login
+curl -X POST http://localhost:3001/api/v1/auth/login -H "Content-Type: application/json" -d "{\"email\":\"dockeruser@smartretailx.com\",\"password\":\"Password123!\"}"
+
+# Get Current User
+curl http://localhost:3001/api/v1/users/me -H "Authorization: Bearer <YOUR_TOKEN>"
+
+# Get Admin Dashboard (Requires ADMIN role token)
+curl http://localhost:3001/api/v1/admin/dashboard -H "Authorization: Bearer <YOUR_TOKEN>"
+
+
+=== PRODUCT INVENTORY SERVICE (PORT 3004) ===
+
+# Health Check
+curl http://localhost:3004/api/v1/health
+
+# List Products
+curl http://localhost:3004/api/v1/products -H "Authorization: Bearer <YOUR_TOKEN>"
+
+# Create Product (Requires ADMIN)
+curl -X POST http://localhost:3004/api/v1/products -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"name\":\"Sample Product\",\"sku\":\"SKU-12345\",\"description\":\"A sample product\",\"price\":99.99,\"category\":\"Electronics\"}"
+
+# Get Product by ID
+curl http://localhost:3004/api/v1/products/<PRODUCT_ID> -H "Authorization: Bearer <YOUR_TOKEN>"
+
+# Get Product by SKU
+curl http://localhost:3004/api/v1/products/sku/SKU-12345 -H "Authorization: Bearer <YOUR_TOKEN>"
+
+# Update Product (Requires ADMIN)
+curl -X PUT http://localhost:3004/api/v1/products/<PRODUCT_ID> -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"price\":89.99}"
+
+# Delete Product (Requires ADMIN)
+curl -X DELETE http://localhost:3004/api/v1/products/<PRODUCT_ID> -H "Authorization: Bearer <YOUR_TOKEN>"
+
+# Get Inventory
+curl http://localhost:3004/api/v1/inventory -H "Authorization: Bearer <YOUR_TOKEN>"
+
+# Adjust Inventory (Requires ADMIN)
+curl -X POST http://localhost:3004/api/v1/inventory/adjust -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"productId\":\"<PRODUCT_ID>\",\"quantity\":50,\"reason\":\"Restock\"}"
+
+# Consume Inventory
+curl -X POST http://localhost:3004/api/v1/inventory/consume -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"productId\":\"<PRODUCT_ID>\",\"quantity\":1,\"orderId\":\"<ORDER_ID>\"}"
+
+# Release Inventory
+curl -X POST http://localhost:3004/api/v1/inventory/release -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"productId\":\"<PRODUCT_ID>\",\"quantity\":1,\"orderId\":\"<ORDER_ID>\"}"
+
+
+=== ORDER SERVICE (PORT 3003) ===
+
+# Health Check
+curl http://localhost:3003/api/v1/health
+
+# List Orders
+curl http://localhost:3003/api/v1/orders -H "Authorization: Bearer <YOUR_TOKEN>"
+
+# Create Order
+curl -X POST http://localhost:3003/api/v1/orders -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"items\":[{\"productId\":\"<PRODUCT_ID>\",\"quantity\":2}],\"shippingAddress\":\"123 Test St\",\"billingAddress\":\"123 Test St\",\"paymentMethod\":\"CREDIT_CARD\"}"
+
+# Get Order by ID
+curl http://localhost:3003/api/v1/orders/<ORDER_ID> -H "Authorization: Bearer <YOUR_TOKEN>"
+
+# Update Order
+curl -X PUT http://localhost:3003/api/v1/orders/<ORDER_ID> -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"shippingAddress\":\"456 New St\"}"
+
+# Update Order Status (Requires ADMIN)
+curl -X PATCH http://localhost:3003/api/v1/orders/<ORDER_ID>/status -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"status\":\"SHIPPED\"}"
+
+# Delete Order
+curl -X DELETE http://localhost:3003/api/v1/orders/<ORDER_ID> -H "Authorization: Bearer <YOUR_TOKEN>"
+
+
+=== NOTIFICATION SERVICE (PORT 3002) ===
+
+# Health Check
+curl http://localhost:3002/api/v1/health
+
+# Create Internal Notification
+curl -X POST http://localhost:3002/api/v1/notifications/internal -H "Content-Type: application/json" -d "{\"userId\":\"<USER_ID>\",\"type\":\"SYSTEM_ALERT\",\"message\":\"System restart initiated.\"}"
+
+# Get Notifications by User
+curl http://localhost:3002/api/v1/notifications/users/<USER_ID> -H "Authorization: Bearer <YOUR_TOKEN>"
+
+# List All Notifications
+curl http://localhost:3002/api/v1/notifications -H "Authorization: Bearer <YOUR_TOKEN>"
+
+# Create Notification (Requires ADMIN)
+curl -X POST http://localhost:3002/api/v1/notifications -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"userId\":\"<USER_ID>\",\"type\":\"PROMO\",\"message\":\"50% off today!\"}"
+
+# Get Notification by ID
+curl http://localhost:3002/api/v1/notifications/<NOTIFICATION_ID> -H "Authorization: Bearer <YOUR_TOKEN>"
+
+# Mark Notification as Read
+curl -X PATCH http://localhost:3002/api/v1/notifications/<NOTIFICATION_ID>/read -H "Authorization: Bearer <YOUR_TOKEN>"
+
+# Update Notification (Requires ADMIN)
+curl -X PUT http://localhost:3002/api/v1/notifications/<NOTIFICATION_ID> -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"message\":\"Updated promo message\"}"
+
+# Delete Notification (Requires ADMIN)
+curl -X DELETE http://localhost:3002/api/v1/notifications/<NOTIFICATION_ID> -H "Authorization: Bearer <YOUR_TOKEN>"
