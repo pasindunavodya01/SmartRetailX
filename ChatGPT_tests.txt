@@ -1,0 +1,1218 @@
+# SmartRetailX API Test Scripts
+
+## Prerequisites
+
+Start all Docker containers:
+
+```powershell
+docker compose up -d --build
+```
+
+Verify:
+
+```powershell
+docker compose ps
+```
+
+All five services should be `Up`:
+
+* PostgreSQL — `5432`
+* User Service — `3001`
+* Notification Service — `3002`
+* Order Service — `3003`
+* Product Inventory Service — `3004`
+
+---
+
+# 1. USER SERVICE — PORT 3001
+
+## 1.1 Health Check
+
+```powershell
+curl http://localhost:3001/api/v1/health
+```
+
+Expected:
+
+```json
+{
+  "status": "healthy",
+  "service": "user-service"
+}
+```
+
+---
+
+## 1.2 Register User
+
+Use a new email if the user already exists.
+
+```powershell
+curl -X POST http://localhost:3001/api/v1/auth/register -H "Content-Type: application/json" -d "{\"email\":\"testuser@smartretailx.com\",\"password\":\"Password123!\",\"firstName\":\"Test\",\"lastName\":\"User\"}"
+```
+
+Expected:
+
+```json
+{
+  "message": "User registered successfully",
+  "user": {
+    "id": "...",
+    "email": "testuser@smartretailx.com",
+    "firstName": "Test",
+    "lastName": "User",
+    "role": "CUSTOMER"
+  }
+}
+```
+
+---
+
+## 1.3 Login
+
+```powershell
+curl -X POST http://localhost:3001/api/v1/auth/login -H "Content-Type: application/json" -d "{\"email\":\"testuser@smartretailx.com\",\"password\":\"Password123!\"}"
+```
+
+Copy the returned JWT and use it as:
+
+```text
+YOUR_TOKEN
+```
+
+---
+
+## 1.4 Invalid Login
+
+```powershell
+curl -X POST http://localhost:3001/api/v1/auth/login -H "Content-Type: application/json" -d "{\"email\":\"testuser@smartretailx.com\",\"password\":\"WrongPassword123!\"}"
+```
+
+Expected:
+
+```json
+{
+  "message": "Invalid credentials"
+}
+```
+
+Expected HTTP status:
+
+```text
+401
+```
+
+---
+
+## 1.5 Get Current User
+
+```powershell
+curl http://localhost:3001/api/v1/users/me -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```json
+{
+  "id": "...",
+  "email": "testuser@smartretailx.com",
+  "firstName": "Test",
+  "lastName": "User",
+  "role": "CUSTOMER",
+  "isActive": true,
+  "createdAt": "..."
+}
+```
+
+---
+
+## 1.6 Missing Authentication
+
+```powershell
+curl http://localhost:3001/api/v1/users/me
+```
+
+Expected:
+
+```json
+{
+  "message": "Authentication required"
+}
+```
+
+Expected HTTP status:
+
+```text
+401
+```
+
+---
+
+## 1.7 Invalid Token
+
+```powershell
+curl http://localhost:3001/api/v1/users/me -H "Authorization: Bearer invalid-token"
+```
+
+Expected:
+
+```json
+{
+  "message": "Invalid or expired token"
+}
+```
+
+Expected HTTP status:
+
+```text
+401
+```
+
+---
+
+## 1.8 Admin Dashboard
+
+Requires an ADMIN JWT.
+
+```powershell
+curl http://localhost:3001/api/v1/admin/dashboard -H "Authorization: Bearer ADMIN_TOKEN"
+```
+
+Expected: successful admin response.
+
+---
+
+## 1.9 Customer Access to Admin Dashboard
+
+```powershell
+curl http://localhost:3001/api/v1/admin/dashboard -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```text
+403 Forbidden
+```
+
+---
+
+# 2. PRODUCT INVENTORY SERVICE — PORT 3004
+
+## 2.1 Health Check
+
+```powershell
+curl http://localhost:3004/api/v1/health
+```
+
+Expected:
+
+```json
+{
+  "status": "healthy",
+  "service": "product-inventory-service"
+}
+```
+
+---
+
+## 2.2 List Products
+
+```powershell
+curl http://localhost:3004/api/v1/products -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```json
+{
+  "items": [
+    {
+      "id": "...",
+      "sku": "SKU-002",
+      "name": "Connected Product",
+      "price": "24.99",
+      "inventory": {
+        "stock": 10
+      }
+    }
+  ]
+}
+```
+
+---
+
+## 2.3 Create Product
+
+Requires ADMIN token.
+
+```powershell
+curl -X POST http://localhost:3004/api/v1/products -H "Authorization: Bearer ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"name\":\"Test Product\",\"sku\":\"SKU-TEST-001\",\"price\":99.99}"
+```
+
+Expected:
+
+```text
+201 Created
+```
+
+Save the returned:
+
+```text
+PRODUCT_ID
+PRODUCT_SKU
+```
+
+---
+
+## 2.4 Create Product Without Admin
+
+```powershell
+curl -X POST http://localhost:3004/api/v1/products -H "Authorization: Bearer YOUR_TOKEN" -H "Content-Type: application/json" -d "{\"name\":\"Unauthorized Product\",\"sku\":\"SKU-TEST-002\",\"price\":99.99}"
+```
+
+Expected:
+
+```text
+403 Forbidden
+```
+
+---
+
+## 2.5 Get Product by ID
+
+```powershell
+curl http://localhost:3004/api/v1/products/PRODUCT_ID -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+---
+
+## 2.6 Get Product by SKU
+
+```powershell
+curl http://localhost:3004/api/v1/products/sku/SKU-TEST-001 -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+---
+
+## 2.7 Get Non-existent Product
+
+```powershell
+curl http://localhost:3004/api/v1/products/non-existent-id -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```json
+{
+  "message": "Product not found"
+}
+```
+
+Expected HTTP status:
+
+```text
+404
+```
+
+---
+
+## 2.8 Update Product
+
+Requires ADMIN.
+
+```powershell
+curl -X PUT http://localhost:3004/api/v1/products/PRODUCT_ID -H "Authorization: Bearer ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"price\":89.99}"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+---
+
+## 2.9 Delete Product
+
+Requires ADMIN.
+
+```powershell
+curl -X DELETE http://localhost:3004/api/v1/products/PRODUCT_ID -H "Authorization: Bearer ADMIN_TOKEN"
+```
+
+Expected:
+
+```text
+204 No Content
+```
+
+---
+
+# 3. INVENTORY TESTS
+
+## 3.1 Get Inventory
+
+```powershell
+curl http://localhost:3004/api/v1/inventory -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+---
+
+## 3.2 Adjust Inventory
+
+Requires ADMIN.
+
+```powershell
+curl -X POST http://localhost:3004/api/v1/inventory/adjust -H "Authorization: Bearer ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"sku\":\"SKU-002\",\"quantity\":10}"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+Stock should increase by `10`.
+
+---
+
+## 3.3 Consume Inventory — Internal Service Endpoint
+
+Use an SKU with sufficient stock.
+
+```powershell
+curl -X POST http://localhost:3004/api/v1/internal/inventory/consume -H "Content-Type: application/json" -d "{\"sku\":\"SKU-002\",\"quantity\":2}"
+```
+
+Expected:
+
+```json
+{
+  "sku": "SKU-002",
+  "stock": 8,
+  "productId": "..."
+}
+```
+
+---
+
+## 3.4 Insufficient Inventory
+
+```powershell
+curl -X POST http://localhost:3004/api/v1/internal/inventory/consume -H "Content-Type: application/json" -d "{\"sku\":\"SKU-002\",\"quantity\":99999}"
+```
+
+Expected:
+
+```json
+{
+  "message": "Insufficient stock"
+}
+```
+
+Expected HTTP status:
+
+```text
+409
+```
+
+---
+
+## 3.5 Release Inventory — Internal Service Endpoint
+
+```powershell
+curl -X POST http://localhost:3004/api/v1/internal/inventory/release -H "Content-Type: application/json" -d "{\"sku\":\"SKU-002\",\"quantity\":2}"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+The stock should increase by `2`.
+
+---
+
+# 4. ORDER SERVICE — PORT 3003
+
+## 4.1 Health Check
+
+```powershell
+curl http://localhost:3003/api/v1/health
+```
+
+Expected:
+
+```json
+{
+  "status": "healthy",
+  "service": "order-service"
+}
+```
+
+---
+
+## 4.2 List Orders
+
+```powershell
+curl http://localhost:3003/api/v1/orders -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Customer should only receive their own orders.
+
+---
+
+## 4.3 List Orders Without Authentication
+
+```powershell
+curl http://localhost:3003/api/v1/orders
+```
+
+Expected:
+
+```text
+401 Unauthorized
+```
+
+---
+
+## 4.4 Create Order
+
+Use a product with available inventory.
+
+```powershell
+curl -X POST http://localhost:3003/api/v1/orders -H "Authorization: Bearer YOUR_TOKEN" -H "Content-Type: application/json" -d "{\"items\":[{\"sku\":\"SKU-002\",\"quantity\":2,\"price\":24.99}]}"
+```
+
+Expected:
+
+```text
+201 Created
+```
+
+Save:
+
+```text
+ORDER_ID
+```
+
+The response should contain:
+
+```json
+{
+  "id": "...",
+  "customerId": "...",
+  "status": "PENDING",
+  "items": [
+    {
+      "productId": "...",
+      "quantity": 2,
+      "price": "24.99"
+    }
+  ]
+}
+```
+
+---
+
+## 4.5 Verify Inventory Was Consumed
+
+```powershell
+curl http://localhost:3004/api/v1/products -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Verify the product stock decreased by the order quantity.
+
+Example:
+
+```text
+Before: 10
+Order:   2
+After:   8
+```
+
+---
+
+## 4.6 Create Order With Insufficient Stock
+
+```powershell
+curl -X POST http://localhost:3003/api/v1/orders -H "Authorization: Bearer YOUR_TOKEN" -H "Content-Type: application/json" -d "{\"items\":[{\"sku\":\"SKU-002\",\"quantity\":99999,\"price\":24.99}]}"
+```
+
+Expected:
+
+```json
+{
+  "message": "Inventory is insufficient for one or more items"
+}
+```
+
+Expected HTTP status:
+
+```text
+409
+```
+
+---
+
+## 4.7 Get Order by ID
+
+```powershell
+curl http://localhost:3003/api/v1/orders/ORDER_ID -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+---
+
+## 4.8 Get Non-existent Order
+
+```powershell
+curl http://localhost:3003/api/v1/orders/non-existent-id -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```text
+404 Order not found
+```
+
+---
+
+## 4.9 Customer Cannot Access Another Customer's Order
+
+Use another customer's order ID:
+
+```powershell
+curl http://localhost:3003/api/v1/orders/OTHER_ORDER_ID -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```json
+{
+  "message": "Access denied"
+}
+```
+
+Expected:
+
+```text
+403
+```
+
+---
+
+## 4.10 Update Order Details
+
+Requires ADMIN.
+
+```powershell
+curl -X PUT http://localhost:3003/api/v1/orders/ORDER_ID -H "Authorization: Bearer ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"customerId\":\"NEW_CUSTOMER_ID\"}"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+---
+
+## 4.11 Customer Cannot Update Order Details
+
+```powershell
+curl -X PUT http://localhost:3003/api/v1/orders/ORDER_ID -H "Authorization: Bearer YOUR_TOKEN" -H "Content-Type: application/json" -d "{\"customerId\":\"NEW_CUSTOMER_ID\"}"
+```
+
+Expected:
+
+```json
+{
+  "message": "Only admins can update order details"
+}
+```
+
+Expected:
+
+```text
+403
+```
+
+---
+
+## 4.12 Customer Cancels Own Order
+
+```powershell
+curl -X PATCH http://localhost:3003/api/v1/orders/ORDER_ID/status -H "Authorization: Bearer YOUR_TOKEN" -H "Content-Type: application/json" -d "{\"status\":\"CANCELLED\"}"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+Order status:
+
+```text
+CANCELLED
+```
+
+---
+
+## 4.13 Verify Inventory Was Released
+
+After cancellation:
+
+```powershell
+curl http://localhost:3004/api/v1/products -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Verify the order quantity has been returned to stock.
+
+Example:
+
+```text
+Before order:       10
+After order:         8
+After cancellation: 10
+```
+
+---
+
+## 4.14 Customer Cannot Change Order to SHIPPED
+
+```powershell
+curl -X PATCH http://localhost:3003/api/v1/orders/ORDER_ID/status -H "Authorization: Bearer YOUR_TOKEN" -H "Content-Type: application/json" -d "{\"status\":\"SHIPPED\"}"
+```
+
+Expected:
+
+```json
+{
+  "message": "Customers can only cancel orders"
+}
+```
+
+Expected:
+
+```text
+403
+```
+
+---
+
+## 4.15 Admin Updates Order Status
+
+```powershell
+curl -X PATCH http://localhost:3003/api/v1/orders/ORDER_ID/status -H "Authorization: Bearer ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"status\":\"PROCESSING\"}"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+---
+
+## 4.16 Admin Ships Order
+
+```powershell
+curl -X PATCH http://localhost:3003/api/v1/orders/ORDER_ID/status -H "Authorization: Bearer ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"status\":\"SHIPPED\"}"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+---
+
+## 4.17 Admin Marks Order Delivered
+
+```powershell
+curl -X PATCH http://localhost:3003/api/v1/orders/ORDER_ID/status -H "Authorization: Bearer ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"status\":\"DELIVERED\"}"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+---
+
+# 5. NOTIFICATION SERVICE — PORT 3002
+
+## 5.1 Health Check
+
+```powershell
+curl http://localhost:3002/api/v1/health
+```
+
+Expected:
+
+```json
+{
+  "status": "healthy",
+  "service": "notification-service"
+}
+```
+
+---
+
+## 5.2 Create Internal Notification
+
+```powershell
+curl -X POST http://localhost:3002/api/v1/internal/notifications -H "Content-Type: application/json" -d "{\"userId\":\"USER_ID\",\"type\":\"INFO\",\"message\":\"System restart initiated.\"}"
+```
+
+Expected:
+
+```text
+201 Created
+```
+
+Save:
+
+```text
+NOTIFICATION_ID
+```
+
+---
+
+## 5.3 Get Notifications by User
+
+```powershell
+curl http://localhost:3002/api/v1/notifications/users/USER_ID -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+A customer should only be able to access their own notifications.
+
+---
+
+## 5.4 Attempt to Access Another User's Notifications
+
+```powershell
+curl http://localhost:3002/api/v1/notifications/users/OTHER_USER_ID -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```json
+{
+  "message": "Access denied"
+}
+```
+
+Expected:
+
+```text
+403
+```
+
+---
+
+## 5.5 List Notifications
+
+```powershell
+curl http://localhost:3002/api/v1/notifications -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+Customers should receive their own notifications.
+
+Admins can access notifications more broadly depending on the route configuration.
+
+---
+
+## 5.6 Create Notification — Admin
+
+```powershell
+curl -X POST http://localhost:3002/api/v1/notifications -H "Authorization: Bearer ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"userId\":\"USER_ID\",\"type\":\"INFO\",\"message\":\"Special promotion available.\"}"
+```
+
+Expected:
+
+```text
+201 Created
+```
+
+---
+
+## 5.7 Create Notification — Customer
+
+```powershell
+curl -X POST http://localhost:3002/api/v1/notifications -H "Authorization: Bearer YOUR_TOKEN" -H "Content-Type: application/json" -d "{\"userId\":\"USER_ID\",\"type\":\"INFO\",\"message\":\"Test notification.\"}"
+```
+
+Expected:
+
+```text
+403 Forbidden
+```
+
+if the route is restricted to administrators.
+
+---
+
+## 5.8 Get Notification by ID
+
+```powershell
+curl http://localhost:3002/api/v1/notifications/NOTIFICATION_ID -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+---
+
+## 5.9 Mark Notification as Read
+
+```powershell
+curl -X PATCH http://localhost:3002/api/v1/notifications/NOTIFICATION_ID/read -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+The response should contain:
+
+```json
+{
+  "isRead": true
+}
+```
+
+---
+
+## 5.10 Update Notification
+
+Requires ADMIN.
+
+```powershell
+curl -X PUT http://localhost:3002/api/v1/notifications/NOTIFICATION_ID -H "Authorization: Bearer ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"message\":\"Updated notification message\"}"
+```
+
+Expected:
+
+```text
+200 OK
+```
+
+---
+
+## 5.11 Delete Notification
+
+Requires ADMIN.
+
+```powershell
+curl -X DELETE http://localhost:3002/api/v1/notifications/NOTIFICATION_ID -H "Authorization: Bearer ADMIN_TOKEN"
+```
+
+Expected:
+
+```text
+204 No Content
+```
+
+---
+
+# 6. END-TO-END MICROSERVICE TEST
+
+This is the most important integration test.
+
+## Step 1 — Login
+
+```powershell
+curl -X POST http://localhost:3001/api/v1/auth/login -H "Content-Type: application/json" -d "{\"email\":\"testuser@smartretailx.com\",\"password\":\"Password123!\"}"
+```
+
+Copy:
+
+```text
+YOUR_TOKEN
+```
+
+---
+
+## Step 2 — Check Product Stock
+
+```powershell
+curl http://localhost:3004/api/v1/products -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Record the stock for:
+
+```text
+SKU-002
+```
+
+Example:
+
+```text
+Stock = 10
+```
+
+---
+
+## Step 3 — Create Order
+
+```powershell
+curl -X POST http://localhost:3003/api/v1/orders -H "Authorization: Bearer YOUR_TOKEN" -H "Content-Type: application/json" -d "{\"items\":[{\"sku\":\"SKU-002\",\"quantity\":2,\"price\":24.99}]}"
+```
+
+Copy:
+
+```text
+ORDER_ID
+```
+
+---
+
+## Step 4 — Verify Inventory Consumption
+
+```powershell
+curl http://localhost:3004/api/v1/products -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```text
+10 → 8
+```
+
+---
+
+## Step 5 — Verify Notification
+
+```powershell
+curl http://localhost:3002/api/v1/notifications/users/USER_ID -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected notification:
+
+```text
+Order ORDER_ID created successfully.
+```
+
+---
+
+## Step 6 — Get Order
+
+```powershell
+curl http://localhost:3003/api/v1/orders/ORDER_ID -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```text
+status = PENDING
+```
+
+---
+
+## Step 7 — Cancel Order
+
+```powershell
+curl -X PATCH http://localhost:3003/api/v1/orders/ORDER_ID/status -H "Authorization: Bearer YOUR_TOKEN" -H "Content-Type: application/json" -d "{\"status\":\"CANCELLED\"}"
+```
+
+Expected:
+
+```text
+status = CANCELLED
+```
+
+---
+
+## Step 8 — Verify Inventory Release
+
+```powershell
+curl http://localhost:3004/api/v1/products -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Expected:
+
+```text
+8 → 10
+```
+
+---
+
+# 7. DOCKER VERIFICATION
+
+## Check Containers
+
+```powershell
+docker compose ps
+```
+
+Expected:
+
+```text
+smartretailx-postgres
+smartretailx-user-service
+smartretailx-notification-service
+smartretailx-order-service
+smartretailx-product-inventory-service
+```
+
+All should show:
+
+```text
+Up
+```
+
+---
+
+## Check All Service Logs
+
+```powershell
+docker compose logs --tail=50
+```
+
+---
+
+## Check Individual Services
+
+```powershell
+docker compose logs --tail=50 user-service
+```
+
+```powershell
+docker compose logs --tail=50 product-inventory-service
+```
+
+```powershell
+docker compose logs --tail=50 order-service
+```
+
+```powershell
+docker compose logs --tail=50 notification-service
+```
+
+---
+
+## Rebuild Everything
+
+```powershell
+docker compose down
+docker compose up -d --build
+```
+
+Then:
+
+```powershell
+docker compose ps
+```
+
+---
+
+# 8. AUTOMATED USER SERVICE TESTS
+
+From the user-service directory:
+
+```powershell
+cd services\user-service
+npm test
+```
+
+Expected:
+
+```text
+Test Suites: 3 passed, 3 total
+Tests:       6 passed, 6 total
+```
+
+Current tests cover:
+
+* Health endpoint
+* User registration
+* User login
+* Invalid password
+* Unauthenticated `/users/me`
+* Invalid JWT `/users/me`
+
+---
+
+# 9. FINAL ACCEPTANCE TEST
+
+The SmartRetailX MVP can be considered locally operational when all of the following pass:
+
+| Test                                     | Expected  |
+| ---------------------------------------- | --------- |
+| PostgreSQL container                     | UP        |
+| User Service                             | UP        |
+| Notification Service                     | UP        |
+| Order Service                            | UP        |
+| Product Inventory Service                | UP        |
+| User health                              | 200       |
+| Product health                           | 200       |
+| Order health                             | 200       |
+| Notification health                      | 200       |
+| User registration                        | 201       |
+| User login                               | 200 + JWT |
+| Current user                             | 200       |
+| Invalid JWT                              | 401       |
+| Product listing                          | 200       |
+| Product creation                         | 201       |
+| Inventory adjustment                     | 200       |
+| Inventory consumption                    | 200       |
+| Insufficient stock                       | 409       |
+| Inventory release                        | 200       |
+| Order creation                           | 201       |
+| Order inventory consumption              | Verified  |
+| Order notification                       | Verified  |
+| Order retrieval                          | 200       |
+| Customer order cancellation              | 200       |
+| Inventory restoration after cancellation | Verified  |
+| Admin order status update                | 200       |
+| Customer unauthorized operations         | 403       |
+| Notification creation                    | 201       |
+| Notification retrieval                   | 200       |
+| Notification read status                 | 200       |
+| Notification deletion                    | 204       |

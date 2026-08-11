@@ -1,0 +1,287 @@
+1. Get a fresh customer token
+
+You already have the user, so run:
+
+curl -X POST http://localhost:3001/api/v1/auth/login -H "Content-Type: application/json" -d "{\"email\":\"dockeruser@smartretailx.com\",\"password\":\"Password123!\"}"
+
+Copy the token from the response.
+
+For example:
+
+YOUR_TOKEN = eyJhbGciOi...
+2. Check current inventory
+
+Run:
+
+curl http://localhost:3004/api/v1/products -H "Authorization: Bearer YOUR_TOKEN"
+
+You currently have:
+
+SKU-002
+stock: 10
+
+Remember the stock number.
+
+3. Check notifications BEFORE the order
+
+Run:
+
+curl http://localhost:3002/api/v1/notifications -H "Authorization: Bearer YOUR_TOKEN"
+
+If there are no notifications, that's fine.
+
+4. Create the order
+
+Use your fresh token:
+
+curl -X POST http://localhost:3003/api/v1/orders -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_TOKEN" -d "{\"items\":[{\"sku\":\"SKU-002\",\"quantity\":2,\"price\":24.99}]}"
+
+You should receive something similar to:
+
+{
+  "id": "....",
+  "customerId": "5f8c1f02-...",
+  "status": "PENDING",
+  "items": [
+    {
+      "productId": "4b1eb23a-...",
+      "quantity": 2,
+      "price": "24.99"
+    }
+  ]
+}
+
+This proves the Order Service successfully created the order.
+
+5. Verify inventory decreased
+
+Now run:
+
+curl http://localhost:3004/api/v1/products -H "Authorization: Bearer YOUR_TOKEN"
+
+Before:
+
+SKU-002 → stock: 10
+
+After ordering quantity 2:
+
+SKU-002 → stock: 8
+
+This is the most important evidence that:
+
+Order Service
+      ↓
+Inventory Service
+      ↓
+consumeInventory()
+      ↓
+stock 10 → 8
+6. Verify the order exists
+
+Run:
+
+curl http://localhost:3003/api/v1/orders -H "Authorization: Bearer YOUR_TOKEN"
+
+You should see the new order with:
+
+status: PENDING
+quantity: 2
+productId: ...
+7. Verify Notification Service was called
+
+Run:
+
+curl http://localhost:3002/api/v1/notifications -H "Authorization: Bearer YOUR_TOKEN"
+
+You should see something like:
+
+{
+  "items": [
+    {
+      "userId": "5f8c1f02-...",
+      "message": "Order 4a2ca697-... created successfully.",
+      "type": "INFO"
+    }
+  ]
+}
+
+That proves:
+
+Order Service
+      ↓
+notifyCustomer()
+      ↓
+POST :3002/api/v1/internal/notifications
+      ↓
+Notification Service
+      ↓
+notification stored in PostgreSQL
+
+
+//////////////////////////////////////////////////////////////////
+1. Test the failure paths
+
+You've tested the happy path:
+
+Order → Inventory consume → Stock decreases → Order created → Notification
+
+Now test what happens when things go wrong.
+
+A. Insufficient stock
+
+Your SKU-002 currently has 6.
+
+Try ordering 10:
+
+curl -X POST http://localhost:3003/api/v1/orders -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_TOKEN" -d "{\"items\":[{\"sku\":\"SKU-002\",\"quantity\":10,\"price\":24.99}]}"
+
+You want the order to be rejected and inventory to remain unchanged.
+
+B. Non-existent SKU
+
+curl -X POST http://localhost:3003/api/v1/orders -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_TOKEN" -d "{\"items\":[{\"sku\":\"SKU-999\",\"quantity\":1,\"price\":24.99}]}"
+
+You want a proper error rather than a broken order.
+
+C. Invalid authentication
+
+curl -X POST http://localhost:3003/api/v1/orders -H "Content-Type: application/json" -H "Authorization: Bearer invalid-token" -d "{\"items\":[{\"sku\":\"SKU-002\",\"quantity\":1,\"price\":24.99}]}"
+
+Expected: authentication failure.
+
+2. Test the inventory release flow
+
+You already discovered that this endpoint works:
+
+POST /api/v1/internal/inventory/release
+
+Test it with the current SKU:
+
+curl -X POST http://localhost:3004/api/v1/internal/inventory/release -H "Content-Type: application/json" -d "{\"sku\":\"SKU-002\",\"quantity\":2,\"orderId\":\"6f508d4a-81f8-4249-a277-b3616fce2562\"}"
+
+Then check:
+
+curl http://localhost:3004/api/v1/products -H "Authorization: Bearer YOUR_TOKEN"
+
+You should see:
+
+6 → 8
+
+That gives you evidence for the compensation/release operation.
+
+3. Test order cancellation
+
+This is particularly important because your API supports:
+
+PATCH /api/v1/orders/:id/status
+
+Use the order you created:
+
+curl -X PATCH http://localhost:3003/api/v1/orders/6f508d4a-81f8-4249-a277-b3616fce2562/status -H "Authorization: Bearer YOUR_TOKEN" -H "Content-Type: application/json" -d "{\"status\":\"CANCELLED\"}"
+
+Then retrieve the order:
+
+curl http://localhost:3003/api/v1/orders/6f508d4a-81f8-4249-a277-b3616fce2562 -H "Authorization: Bearer YOUR_TOKEN"
+
+And check inventory again.
+
+If cancellation is supposed to release stock in your implementation, verify:
+
+Order CANCELLED
+       ↓
+Inventory release
+       ↓
+Stock restored
+
+If your current cancellation implementation doesn't release inventory automatically, that's something I'd fix before calling the system complete.
+
+4. Test Notification Service independently
+
+You should also demonstrate that notifications aren't just working accidentally through orders.
+
+For example:
+
+curl -X POST http://localhost:3002/api/v1/internal/notifications -H "Content-Type: application/json" -d "{\"userId\":\"5f8c1f02-572e-4f3c-9362-eca75b81a28c\",\"type\":\"SYSTEM_ALERT\",\"message\":\"Test notification\"}"
+
+Then:
+
+curl http://localhost:3002/api/v1/notifications -H "Authorization: Bearer YOUR_TOKEN"
+
+Then test marking it read:
+
+curl -X PATCH http://localhost:3002/api/v1/notifications/NOTIFICATION_ID/read -H "Authorization: Bearer YOUR_TOKEN"
+5. Test role-based access control
+
+This is important for your microservices assignment.
+
+Your customer token should not be able to:
+
+Create Product
+Update Product
+Delete Product
+Adjust Inventory
+Admin Dashboard
+Admin notification operations
+Admin order operations
+
+For example:
+
+curl -X POST http://localhost:3004/api/v1/products -H "Authorization: Bearer YOUR_TOKEN" -H "Content-Type: application/json" -d "{\"name\":\"Test\",\"sku\":\"TEST-001\",\"price\":10,\"category\":\"Test\"}"
+
+Expected:
+
+403 Forbidden
+
+or whatever error your implementation returns.
+
+6. Then test the complete system
+
+After those individual tests, perform one clean end-to-end demonstration.
+
+I'd reset/reseed the database so SKU-002 starts at a known value, for example:
+
+SKU-002
+Stock = 10
+
+Then record:
+
+STEP 1
+Login
+       ↓
+User Service
+       ↓
+JWT
+
+STEP 2
+Check inventory
+       ↓
+SKU-002 = 10
+
+STEP 3
+Create order
+       ↓
+Order Service
+
+STEP 4
+Inventory consumed
+       ↓
+SKU-002 = 8
+
+STEP 5
+Order created
+       ↓
+PENDING
+
+STEP 6
+Notification generated
+       ↓
+"Order XXXXX created successfully"
+
+STEP 7
+Cancel order
+       ↓
+Inventory released
+       ↓
+SKU-002 = 10
+
+That would be a very strong demonstration for your assignment.
