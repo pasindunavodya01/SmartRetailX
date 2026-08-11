@@ -4,17 +4,75 @@ services:
     image: postgres:16
     container_name: smartretailx-postgres
     restart: unless-stopped
-
     environment:
+      POSTGRES_DB: smartretailx
       POSTGRES_USER: smartretailx
       POSTGRES_PASSWORD: smartretailx_dev_password
-      POSTGRES_DB: smartretailx
-
     ports:
       - "5432:5432"
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-dbs.sql:/docker-entrypoint-initdb.d/init-dbs.sql
+
+  user-service:
+    build:
+      context: ./services/user-service
+    container_name: smartretailx-user-service
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://smartretailx:smartretailx_dev_password@postgres:5432/smartretailx
+      JWT_SECRET: development-only-change-this-secret
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+    container_name: smartretailx-notification-service
+    restart: unless-stopped
+    environment:
+      PORT: 3002
+      DATABASE_URL: postgresql://smartretailx:smartretailx_dev_password@postgres:5432/smartretailx_notification
+      JWT_SECRET: development-only-change-this-secret
+    ports:
+      - "3002:3002"
+    depends_on:
+      - postgres
+
+  order-service:
+    build:
+      context: ./services/order-service
+    container_name: smartretailx-order-service
+    restart: unless-stopped
+    environment:
+      PORT: 3003
+      DATABASE_URL: postgresql://smartretailx:smartretailx_dev_password@postgres:5432/smartretailx_order
+      JWT_SECRET: development-only-change-this-secret
+      PRODUCT_INVENTORY_SERVICE_URL: http://product-inventory-service:3004
+      NOTIFICATION_SERVICE_URL: http://notification-service:3002
+    ports:
+      - "3003:3003"
+    depends_on:
+      - postgres
+      - product-inventory-service
+      - notification-service
+
+  product-inventory-service:
+    build:
+      context: ./services/product-inventory-service
+    container_name: smartretailx-product-inventory-service
+    restart: unless-stopped
+    environment:
+      PORT: 3004
+      DATABASE_URL: postgresql://smartretailx:smartretailx_dev_password@postgres:5432/smartretailx_inventory
+      JWT_SECRET: development-only-change-this-secret
+    ports:
+      - "3004:3004"
+    depends_on:
+      - postgres
 
 volumes:
   postgres_data:

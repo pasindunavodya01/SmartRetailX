@@ -3,10 +3,13 @@ FROM node:22-alpine
 WORKDIR /app
 
 COPY package*.json ./
+
+RUN npm ci --ignore-scripts
+
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 
-RUN npm ci --omit=dev
+RUN npx prisma generate
 
 COPY src ./src
 

@@ -6,3 +6,6 @@ npm-debug.log
 .dockerignore
 Dockerfile
 tests
+coverage
+.vscode
+.idea

@@ -1,0 +1,3 @@
+CREATE DATABASE smartretailx_inventory;
+CREATE DATABASE smartretailx_order;
+CREATE DATABASE smartretailx_notification;
