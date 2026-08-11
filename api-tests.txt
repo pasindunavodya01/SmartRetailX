@@ -77,8 +77,6 @@ curl -X PUT http://localhost:3003/api/v1/orders/<ORDER_ID> -H "Authorization: Be
 # Update Order Status (ADMIN can set any status, Customer can only CANCEL their own)
 curl -X PATCH http://localhost:3003/api/v1/orders/<ORDER_ID>/status -H "Authorization: Bearer <YOUR_TOKEN>" -H "Content-Type: application/json" -d "{\"status\":\"CANCELLED\"}"
 
-# Delete Order
-curl -X DELETE http://localhost:3003/api/v1/orders/<ORDER_ID> -H "Authorization: Bearer <YOUR_TOKEN>"
 
 
 === NOTIFICATION SERVICE (PORT 3002) ===

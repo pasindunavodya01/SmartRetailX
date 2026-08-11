@@ -239,40 +239,10 @@ const updateOrderStatus = async (req, res) => {
     }
 };
 
-const deleteOrder = async (req, res) => {
-    try {
-        const order = await prisma.order.findUnique({
-            where: { id: req.params.id },
-            include: { items: true }
-        });
-
-        if (!order) {
-            return res.status(404).json({ message: 'Order not found' });
-        }
-
-        for (const item of order.items) {
-            const response = await fetch(`${PRODUCT_INVENTORY_SERVICE_URL}/api/v1/products/${item.productId}`);
-            if (response.ok) {
-                const product = await response.json();
-                await releaseInventory(product.sku, item.quantity);
-            }
-        }
-
-        await prisma.orderItem.deleteMany({ where: { orderId: req.params.id } });
-        await prisma.order.delete({ where: { id: req.params.id } });
-
-        res.status(204).send();
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
-};
-
 module.exports = {
     listOrders,
     createOrder,
     getOrderById,
     updateOrder,
-    updateOrderStatus,
-    deleteOrder
+    updateOrderStatus
 };

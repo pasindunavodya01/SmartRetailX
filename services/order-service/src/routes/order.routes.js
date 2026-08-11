@@ -7,8 +7,7 @@ const {
     createOrder,
     getOrderById,
     updateOrder,
-    updateOrderStatus,
-    deleteOrder
+    updateOrderStatus
 } = require('../controllers/order.controller');
 
 const router = express.Router();
@@ -101,24 +100,6 @@ router.put('/:id', authenticate, updateOrder);
  */
 router.patch('/:id/status', authenticate, updateOrderStatus);
 
-/**
- * @swagger
- * /api/v1/orders/{id}:
- *   delete:
- *     summary: Delete an order
- *     tags: [Orders]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       204:
- *         description: Order deleted
- */
-router.delete('/:id', authenticate, deleteOrder);
+
 
 module.exports = router;
