@@ -1216,3 +1216,6 @@ The SmartRetailX MVP can be considered locally operational when all of the follo
 | Notification retrieval                   | 200       |
 | Notification read status                 | 200       |
 | Notification deletion                    | 204       |
+
+
+python -m http.server 8080
