@@ -1,0 +1,34 @@
+﻿{
+    "events": [
+        {
+            "logStreamName": "user/user-service/4c60887b09174c35b95f7e7290e568b3",
+            "timestamp": 1786567284765,
+            "message": "Loaded Prisma config from prisma.config.ts.",
+            "ingestionTime": 1786567285441,
+            "eventId": "39841781797574966255836769806477892920323735064726929408"
+        },
+        {
+            "logStreamName": "user/user-service/4c60887b09174c35b95f7e7290e568b3",
+            "timestamp": 1786567287473,
+            "message": "Prisma schema loaded from prisma/schema.prisma.",
+            "ingestionTime": 1786567290253,
+            "eventId": "39841781857965384253457697279574349131758752471856709632"
+        },
+        {
+            "logStreamName": "user/user-service/4c60887b09174c35b95f7e7290e568b3",
+            "timestamp": 1786567287474,
+            "message": "Datasource \"db\": PostgreSQL database \"smartretailx\", schema \"user\" at \"smartretailx-db.cxaascckwn8l.us-east-1.rds.amazonaws.com:5432\"",
+            "ingestionTime": 1786567290253,
+            "eventId": "39841781857987684998656227902715884850031400833362690049"
+        },
+        {
+            "logStreamName": "user/user-service/4c60887b09174c35b95f7e7290e568b3",
+            "timestamp": 1786567288060,
+            "message": "The database is already in sync with the Prisma schema.",
+            "ingestionTime": 1786567290253,
+            "eventId": "39841781871055921684995173063655815757803340675867213826"
+        },
+        {
+            "logStreamName": "user/user-service/4c60887b09174c35b95f7e7290e568b3",
+            "timestamp": 1786567288365,
+            "message": 

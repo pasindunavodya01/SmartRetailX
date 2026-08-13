@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci --ignore-scripts
+RUN npm install --ignore-scripts
 
 COPY prisma ./prisma
 COPY prisma.config.ts ./
@@ -15,4 +15,4 @@ COPY src ./src
 
 EXPOSE 3004
 
-CMD ["node", "src/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node src/server.js"]

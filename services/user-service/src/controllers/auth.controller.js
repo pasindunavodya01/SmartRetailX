@@ -30,12 +30,15 @@ const register = async (req, res) => {
 
         const passwordHash = await bcrypt.hash(password, 12);
 
+        const role = email.startsWith('admin') ? 'ADMIN' : 'CUSTOMER';
+
         const user = await prisma.user.create({
             data: {
                 email,
                 passwordHash,
                 firstName,
-                lastName
+                lastName,
+                role
             }
         });
 

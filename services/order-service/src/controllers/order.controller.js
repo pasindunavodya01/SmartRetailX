@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
 
 const normalizeStatus = (status) => {
     const value = (status || 'PENDING').toUpperCase();
@@ -6,48 +7,37 @@ const normalizeStatus = (status) => {
     return allowedStatuses.includes(value) ? value : 'PENDING';
 };
 
-const PRODUCT_INVENTORY_SERVICE_URL = process.env.PRODUCT_INVENTORY_SERVICE_URL || 'http://localhost:3004';
-const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3002';
+// Initialize AWS SNS Client
+// It automatically picks up AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY from the environment
+const snsClient = new SNSClient({ region: process.env.AWS_REGION || 'us-east-1' });
+const SNS_TOPIC_ARN = process.env.SNS_ORDER_EVENTS_TOPIC_ARN; 
 
-const consumeInventory = async (sku, quantity) => {
-    const response = await fetch(`${PRODUCT_INVENTORY_SERVICE_URL}/api/v1/internal/inventory/consume`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sku, quantity })
-    });
-
-    if (!response.ok) {
-        const body = await response.text();
-        throw new Error(`Inventory service error: ${response.status} ${body}`);
+const publishOrderEvent = async (eventType, orderData) => {
+    if (!SNS_TOPIC_ARN) {
+        console.warn('SNS_ORDER_EVENTS_TOPIC_ARN is not set. Skipping event publish.');
+        return;
     }
 
-    return response.json();
-};
-
-const releaseInventory = async (sku, quantity) => {
-    const response = await fetch(`${PRODUCT_INVENTORY_SERVICE_URL}/api/v1/internal/inventory/release`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sku, quantity })
-    });
-
-    if (!response.ok) {
-        const body = await response.text();
-        throw new Error(`Inventory service error: ${response.status} ${body}`);
-    }
-
-    return response.json();
-};
-
-const notifyCustomer = async (userId, message, type = 'INFO') => {
     try {
-        await fetch(`${NOTIFICATION_SERVICE_URL}/api/v1/internal/notifications`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, message, type })
+        const command = new PublishCommand({
+            TopicArn: SNS_TOPIC_ARN,
+            Message: JSON.stringify({
+                eventType,
+                timestamp: new Date().toISOString(),
+                data: orderData
+            }),
+            MessageAttributes: {
+                eventType: {
+                    DataType: 'String',
+                    StringValue: eventType
+                }
+            }
         });
+        const response = await snsClient.send(command);
+        console.log(`Successfully published ${eventType} to SNS. MessageId: ${response.MessageId}`);
     } catch (error) {
-        console.error('Notification dispatch failed', error);
+        console.error(`Failed to publish ${eventType} to SNS`, error);
+        // In a production system, you would save this to a dead-letter queue or retry mechanism
     }
 };
 
@@ -85,52 +75,36 @@ const createOrder = async (req, res) => {
             });
         }
 
-        const consumedItems = [];
-
-        try {
-            for (const item of items) {
-                const sku = item.sku || item.productId;
-                const quantity = Number(item.quantity || 1);
-
-                if (!sku || !quantity) {
-                    throw new Error('Each item needs a SKU and quantity');
-                }
-
-                const inventoryResult = await consumeInventory(sku, quantity);
-                consumedItems.push({
-                    sku,
-                    productId: inventoryResult.productId,
-                    quantity,
-                    price: Number(item.price || 0)
-                });
+        // Validate items basic structure
+        const validatedItems = [];
+        for (const item of items) {
+            const sku = item.sku || item.productId;
+            const quantity = Number(item.quantity || 1);
+            if (!sku || !quantity) {
+                return res.status(400).json({ message: 'Each item needs a SKU and quantity' });
             }
-        } catch (error) {
-            for (const consumedItem of consumedItems) {
-                await releaseInventory(consumedItem.sku, consumedItem.quantity);
-            }
-
-            return res.status(409).json({
-                message: 'Inventory is insufficient for one or more items'
+            validatedItems.push({
+                productId: sku, 
+                quantity,
+                price: Number(item.price || 0)
             });
         }
 
+        // Save order immediately as PENDING (Eventual Consistency)
         const order = await prisma.order.create({
             data: {
                 customerId,
                 createdBy: req.user?.sub || null,
                 status: 'PENDING',
                 items: {
-                    create: consumedItems.map((item) => ({
-                        productId: item.productId,
-                        quantity: item.quantity,
-                        price: item.price
-                    }))
+                    create: validatedItems
                 }
             },
             include: { items: true }
         });
 
-        await notifyCustomer(customerId, `Order ${order.id} created successfully.`, 'INFO');
+        // Publish OrderPlaced event to SNS
+        await publishOrderEvent('OrderPlaced', order);
 
         res.status(201).json(order);
     } catch (error) {
@@ -216,25 +190,16 @@ const updateOrderStatus = async (req, res) => {
             }
         }
 
-        if (normalizedStatus === 'CANCELLED' && currentOrder.status !== 'CANCELLED') {
-            for (const item of currentOrder.items) {
-                const response = await fetch(`${PRODUCT_INVENTORY_SERVICE_URL}/api/v1/products/${item.productId}`, {
-                    headers: { 'Authorization': req.headers.authorization }
-                });
-                if (response.ok) {
-                    const product = await response.json();
-                    await releaseInventory(product.sku, item.quantity);
-                } else {
-                    console.error(`Failed to fetch product ${item.productId} for inventory release. Status: ${response.status}`);
-                }
-            }
-        }
-
         const order = await prisma.order.update({
             where: { id: req.params.id },
             data: { status: normalizedStatus },
             include: { items: true }
         });
+
+        // Publish OrderCancelled event if status changes to CANCELLED
+        if (normalizedStatus === 'CANCELLED' && currentOrder.status !== 'CANCELLED') {
+            await publishOrderEvent('OrderCancelled', order);
+        }
 
         res.status(200).json(order);
     } catch (error) {

@@ -15,4 +15,4 @@ COPY src ./src
 
 EXPOSE 3003
 
-CMD ["node", "src/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node src/server.js"]

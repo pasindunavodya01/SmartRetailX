@@ -1,0 +1,243 @@
+{
+	"info": {
+		"name": "SmartRetailX AWS Cloud",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "User Service",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/health",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"health"
+							]
+						}
+					}
+				},
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"clouduser@smartretailx.com\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"Cloud\",\n  \"lastName\": \"User\"\n}"
+						},
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/auth/register",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"register"
+							]
+						}
+					}
+				},
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"clouduser@smartretailx.com\",\n  \"password\": \"Password123!\"\n}"
+						},
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/auth/login",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Product Inventory Service",
+			"item": [
+				{
+					"name": "List Products",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/products",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"products"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Product (Requires Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sku\": \"PROD-001\",\n  \"name\": \"Smart Watch\",\n  \"price\": 199.99\n}"
+						},
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/products",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"products"
+							]
+						}
+					}
+				},
+				{
+					"name": "Add Inventory (Requires Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sku\": \"PROD-001\",\n  \"quantity\": 50\n}"
+						},
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/internal/inventory/adjust",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"internal",
+								"inventory",
+								"adjust"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Order Service",
+			"item": [
+				{
+					"name": "Create Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"items\": [\n    {\n      \"sku\": \"PROD-001\",\n      \"quantity\": 2,\n      \"price\": 199.99\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/orders",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"orders"
+							]
+						}
+					}
+				},
+				{
+					"name": "List Orders",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/orders",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"orders"
+							]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "ALB_URL",
+			"value": "http://smartretailx-alb-882710877.us-east-1.elb.amazonaws.com",
+			"type": "string"
+		},
+		{
+			"key": "JWT_TOKEN",
+			"value": "REPLACE_ME_WITH_YOUR_LOGIN_TOKEN",
+			"type": "string"
+		}
+	]
+}
