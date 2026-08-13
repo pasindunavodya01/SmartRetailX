@@ -12,7 +12,10 @@ const adminRoutes = require('./routes/admin.routes');
 
 const app = express();
 
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false
+}));
 
 app.use(cors({
     origin: process.env.CORS_ORIGIN || '*'
@@ -39,10 +42,10 @@ app.get('/api/v1/health', (req, res) => {
     });
 });
 
+app.use('/api/v1/users/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/admin', adminRoutes);
-
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 module.exports = app;

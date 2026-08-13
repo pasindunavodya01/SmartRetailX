@@ -13,8 +13,8 @@ const options = {
 
         servers: [
             {
-                url: 'http://localhost:3002',
-                description: 'Local development server'
+                url: '/',
+                description: 'API Server'
             }
         ],
 

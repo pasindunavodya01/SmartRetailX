@@ -18,8 +18,8 @@ app.get('/api/v1/health', (req, res) => {
     });
 });
 
-app.use('/api/v1', notificationRoutes);
+app.use('/api/v1/notifications/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use('/api/v1', notificationRoutes);
 
 module.exports = app;
