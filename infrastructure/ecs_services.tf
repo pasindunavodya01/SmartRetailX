@@ -85,9 +85,10 @@ resource "aws_ecs_task_definition" "product" {
     environment = [
       { name = "PORT", value = "3004" },
       { name = "DATABASE_URL", value = local.db_url },
+      { name = "JWT_SECRET", value = "production-super-secret-key" },
       { name = "AWS_REGION", value = "us-east-1" },
       { name = "SQS_INVENTORY_QUEUE_URL", value = aws_sqs_queue.inventory_queue.url },
-      { name = "FORCE_DEPLOY", value = "5" }
+      { name = "FORCE_DEPLOY", value = "6" }
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -144,7 +145,7 @@ resource "aws_ecs_task_definition" "order" {
       { name = "JWT_SECRET", value = "production-super-secret-key" },
       { name = "AWS_REGION", value = "us-east-1" },
       { name = "SNS_ORDER_EVENTS_TOPIC_ARN", value = aws_sns_topic.order_events.arn },
-      { name = "FORCE_DEPLOY", value = "5" }
+      { name = "FORCE_DEPLOY", value = "6" }
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -198,9 +199,10 @@ resource "aws_ecs_task_definition" "notification" {
     environment = [
       { name = "PORT", value = "3002" },
       { name = "DATABASE_URL", value = local.db_url },
+      { name = "JWT_SECRET", value = "production-super-secret-key" },
       { name = "AWS_REGION", value = "us-east-1" },
       { name = "SQS_NOTIFICATION_QUEUE_URL", value = aws_sqs_queue.notification_queue.url },
-      { name = "FORCE_DEPLOY", value = "5" }
+      { name = "FORCE_DEPLOY", value = "6" }
     ]
     logConfiguration = {
       logDriver = "awslogs"
