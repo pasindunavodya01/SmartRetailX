@@ -249,6 +249,43 @@ const releaseInventory = async (req, res) => {
     }
 };
 
+const applyPromotion = async (req, res) => {
+    try {
+        const { discountPercentage } = req.body;
+
+        if (!discountPercentage || typeof discountPercentage !== 'number' || discountPercentage <= 0 || discountPercentage >= 100) {
+            return res.status(400).json({ message: 'Valid discountPercentage (1-99) is required' });
+        }
+
+        const products = await prisma.product.findMany();
+        
+        // Update all products in DB
+        for (const product of products) {
+            const currentPrice = Number(product.price);
+            const newPrice = (currentPrice * (1 - discountPercentage / 100)).toFixed(2);
+            await prisma.product.update({
+                where: { id: product.id },
+                data: { price: Number(newPrice) }
+            });
+        }
+
+        // Emit Socket.io event to all connected clients
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('promotion', { 
+                message: `FLASH SALE! ${discountPercentage}% OFF all items! Prices updated real-time!`,
+                type: 'DISCOUNT',
+                percentage: discountPercentage
+            });
+        }
+
+        res.status(200).json({ message: `Promotion of ${discountPercentage}% applied to all products` });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
 module.exports = {
     listProducts,
     createProduct,
@@ -259,5 +296,6 @@ module.exports = {
     getInventory,
     adjustInventory,
     consumeInventory,
-    releaseInventory
+    releaseInventory,
+    applyPromotion
 };

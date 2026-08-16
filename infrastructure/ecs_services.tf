@@ -88,7 +88,7 @@ resource "aws_ecs_task_definition" "product" {
       { name = "JWT_SECRET", value = "production-super-secret-key" },
       { name = "AWS_REGION", value = "us-east-1" },
       { name = "SQS_INVENTORY_QUEUE_URL", value = aws_sqs_queue.inventory_queue.url },
-      { name = "FORCE_DEPLOY", value = "10" }
+      { name = "FORCE_DEPLOY", value = "13" }
     ]
     logConfiguration = {
       logDriver = "awslogs"

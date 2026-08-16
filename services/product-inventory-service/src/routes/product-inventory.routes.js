@@ -12,7 +12,8 @@ const {
     getInventory,
     adjustInventory,
     consumeInventory,
-    releaseInventory
+    releaseInventory,
+    applyPromotion
 } = require('../controllers/product-inventory.controller');
 
 const router = express.Router();
@@ -176,5 +177,18 @@ router.post('/internal/inventory/consume', consumeInventory);
  *         description: Inventory released
  */
 router.post('/internal/inventory/release', releaseInventory);
+/**
+ * @swagger
+ * /api/v1/products/promotions:
+ *   post:
+ *     summary: Apply a global promotion (Admin)
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Promotion applied
+ */
+router.post('/products/promotions', authenticate, authorize('ADMIN'), applyPromotion);
 
 module.exports = router;

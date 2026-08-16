@@ -105,6 +105,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('modal-product-title').innerText = 'Add Product';
         openModal('modal-product');
     });
+
+    document.getElementById('btn-promotion').addEventListener('click', async () => {
+        const discount = prompt('Enter discount percentage (1-99):', '20');
+        if (discount && !isNaN(discount) && discount > 0 && discount < 100) {
+            try {
+                await apiCall(`${API_URLS.PROD}/products/promotions`, 'POST', { discountPercentage: Number(discount) });
+                showToast('Promotion launched!');
+            } catch (e) {}
+        } else if (discount) {
+            showToast('Invalid discount percentage', 'error');
+        }
+    });
     document.getElementById('btn-create-order').addEventListener('click', openOrderModal);
     document.getElementById('btn-read-all').addEventListener('click', markAllNotificationsRead);
     document.getElementById('btn-admin-dashboard').addEventListener('click', loadAdminMetrics);
@@ -183,6 +195,11 @@ function connectWebSocket() {
             dashboard.insertBefore(banner, dashboard.firstChild);
         } else {
             document.getElementById('promo-banner').innerHTML = `<strong>Special Offer:</strong> ${data.message}`;
+        }
+
+        // If it's a real discount event, automatically refresh the products to show new prices
+        if (data.type === 'DISCOUNT') {
+            loadProducts();
         }
     });
 }
@@ -311,7 +328,7 @@ async function loadOrders() {
                 actions = `<button class="btn-danger btn-small" onclick="cancelOrder('${o.id}')">Cancel</button>`;
             }
             if (currentUser.role === 'ADMIN' && o.status === 'PENDING') {
-                 actions += ` <button class="btn-secondary btn-small" onclick="completeOrder('${o.id}')">Complete</button>`;
+                 actions += ` <button class="btn-secondary btn-small" onclick="completeOrder('${o.id}')">Deliver</button>`;
             }
             if (currentUser.role === 'ADMIN') {
                  actions += ` <button class="btn-secondary btn-small" onclick="simulateDelivery('${o.id}')">Delivery</button>`;
@@ -502,10 +519,10 @@ window.cancelOrder = async function(id) {
     }
 }
 window.completeOrder = async function(id) {
-    if(confirm('Mark this order as COMPLETED?')) {
+    if(confirm('Mark this order as DELIVERED?')) {
         try {
-            await apiCall(`${API_URLS.ORDER}/orders/${id}/status`, 'PATCH', { status: 'COMPLETED' });
-            showToast('Order completed');
+            await apiCall(`${API_URLS.ORDER}/orders/${id}/status`, 'PATCH', { status: 'DELIVERED' });
+            showToast('Order delivered');
             loadOrders();
         } catch(e) {}
     }
