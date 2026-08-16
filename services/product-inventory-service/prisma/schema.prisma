@@ -10,10 +10,27 @@ model Product {
   id        String         @id @default(uuid())
   sku       String         @unique
   name      String
+  description String?
+  category  String?
   price     Decimal        @db.Decimal(10, 2)
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
   inventory InventoryItem?
+}
+
+model Promotion {
+  id                 String   @id @default(uuid())
+  discountPercentage Int
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  endedAt            DateTime?
+}
+
+model ProcessedInventoryEvent {
+  eventId   String   @id
+  orderId   String?
+  eventType String
+  createdAt DateTime @default(now())
 }
 
 model InventoryItem {

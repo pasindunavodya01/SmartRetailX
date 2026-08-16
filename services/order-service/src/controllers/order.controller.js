@@ -2,9 +2,10 @@ const prisma = require('../config/prisma');
 const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
 
 const normalizeStatus = (status) => {
-    const value = (status || 'PENDING').toUpperCase();
+    const value = String(status || '').toUpperCase();
+    if (value === 'COMPLETED') return 'DELIVERED';
     const allowedStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
-    return allowedStatuses.includes(value) ? value : 'PENDING';
+    return allowedStatuses.includes(value) ? value : null;
 };
 
 // Initialize AWS SNS Client
@@ -172,6 +173,9 @@ const updateOrderStatus = async (req, res) => {
         }
 
         const normalizedStatus = normalizeStatus(status);
+        if (!normalizedStatus) {
+            return res.status(400).json({ message: 'Invalid status' });
+        }
         const currentOrder = await prisma.order.findUnique({
             where: { id: req.params.id },
             include: { items: true }

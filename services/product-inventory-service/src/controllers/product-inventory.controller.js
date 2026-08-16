@@ -1,5 +1,28 @@
 const prisma = require('../config/prisma');
 
+const getActivePromotion = () => prisma.promotion.findFirst({
+    where: { active: true },
+    orderBy: { createdAt: 'desc' }
+});
+
+const promotionResponse = (promotion) => promotion && {
+    id: promotion.id,
+    discountPercentage: promotion.discountPercentage,
+    createdAt: promotion.createdAt
+};
+
+const presentProduct = (product, promotion) => {
+    if (!promotion) return product;
+
+    const basePrice = Number(product.price);
+    return {
+        ...product,
+        price: Number((basePrice * (1 - promotion.discountPercentage / 100)).toFixed(2)),
+        originalPrice: basePrice,
+        promotion: promotionResponse(promotion)
+    };
+};
+
 const listProducts = async (req, res) => {
     try {
         const products = await prisma.product.findMany({
@@ -7,7 +30,11 @@ const listProducts = async (req, res) => {
             orderBy: { createdAt: 'desc' }
         });
 
-        res.status(200).json({ items: products });
+        const promotion = await getActivePromotion();
+        res.status(200).json({
+            items: products.map((product) => presentProduct(product, promotion)),
+            promotion: promotionResponse(promotion)
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
@@ -16,7 +43,7 @@ const listProducts = async (req, res) => {
 
 const createProduct = async (req, res) => {
     try {
-        const { sku, name, price } = req.body;
+        const { sku, name, description, category, price } = req.body;
 
         if (!sku || !name || price === undefined || isNaN(Number(price)) || Number(price) <= 0) {
             return res.status(400).json({
@@ -28,6 +55,8 @@ const createProduct = async (req, res) => {
             data: {
                 sku,
                 name,
+                description: typeof description === 'string' ? description : null,
+                category: typeof category === 'string' ? category : null,
                 price: Number(price),
                 inventory: {
                     create: {
@@ -57,7 +86,7 @@ const getProductById = async (req, res) => {
             return res.status(404).json({ message: 'Product not found' });
         }
 
-        res.status(200).json(product);
+        res.status(200).json(presentProduct(product, await getActivePromotion()));
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
@@ -75,7 +104,7 @@ const getProductBySku = async (req, res) => {
             return res.status(404).json({ message: 'Product not found' });
         }
 
-        res.status(200).json(product);
+        res.status(200).json(presentProduct(product, await getActivePromotion()));
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
@@ -84,7 +113,7 @@ const getProductBySku = async (req, res) => {
 
 const updateProduct = async (req, res) => {
     try {
-        const { sku, name, price } = req.body;
+        const { sku, name, description, category, price } = req.body;
         const data = {};
 
         if (sku !== undefined) {
@@ -98,6 +127,18 @@ const updateProduct = async (req, res) => {
                 return res.status(400).json({ message: 'Name cannot be empty' });
             }
             data.name = name;
+        }
+        if (description !== undefined) {
+            if (description !== null && typeof description !== 'string') {
+                return res.status(400).json({ message: 'Description must be a string' });
+            }
+            data.description = description;
+        }
+        if (category !== undefined) {
+            if (category !== null && typeof category !== 'string') {
+                return res.status(400).json({ message: 'Category must be a string' });
+            }
+            data.category = category;
         }
         if (price !== undefined) {
             const numericPrice = Number(price);
@@ -156,9 +197,9 @@ const adjustInventory = async (req, res) => {
     try {
         const { sku, quantity } = req.body;
 
-        if (!sku || typeof quantity !== 'number') {
+        if (!sku || !Number.isInteger(quantity) || quantity === 0) {
             return res.status(400).json({
-                message: 'SKU and quantity are required'
+                message: 'SKU and a non-zero integer quantity are required'
             });
         }
 
@@ -173,9 +214,13 @@ const adjustInventory = async (req, res) => {
             });
         }
 
+        if (stockItem.stock + quantity < 0) {
+            return res.status(409).json({ message: 'Inventory cannot be negative' });
+        }
+
         const updatedInventory = await prisma.inventoryItem.update({
             where: { sku },
-            data: { stock: stockItem.stock + quantity },
+            data: { stock: { increment: quantity } },
             include: { product: true }
         });
 
@@ -253,33 +298,61 @@ const applyPromotion = async (req, res) => {
     try {
         const { discountPercentage } = req.body;
 
-        if (!discountPercentage || typeof discountPercentage !== 'number' || discountPercentage <= 0 || discountPercentage >= 100) {
+        if (!Number.isInteger(discountPercentage) || discountPercentage <= 0 || discountPercentage >= 100) {
             return res.status(400).json({ message: 'Valid discountPercentage (1-99) is required' });
         }
 
-        const products = await prisma.product.findMany();
-        
-        // Update all products in DB
-        for (const product of products) {
-            const currentPrice = Number(product.price);
-            const newPrice = (currentPrice * (1 - discountPercentage / 100)).toFixed(2);
-            await prisma.product.update({
-                where: { id: product.id },
-                data: { price: Number(newPrice) }
+        const existingPromotion = await getActivePromotion();
+        if (existingPromotion) {
+            return res.status(409).json({
+                message: 'An active promotion already exists. End it before launching another.'
             });
         }
+
+        // Product prices are intentionally left untouched. The active promotion is
+        // applied when products are read, so ending it immediately restores prices.
+        const promotion = await prisma.promotion.create({
+            data: { discountPercentage }
+        });
 
         // Emit Socket.io event to all connected clients
         const io = req.app.get('io');
         if (io) {
             io.emit('promotion', { 
-                message: `FLASH SALE! ${discountPercentage}% OFF all items! Prices updated real-time!`,
+                message: `${discountPercentage}% OFF all items`,
                 type: 'DISCOUNT',
-                percentage: discountPercentage
+                promotion: promotionResponse(promotion)
             });
         }
 
-        res.status(200).json({ message: `Promotion of ${discountPercentage}% applied to all products` });
+        res.status(201).json({
+            message: `Promotion of ${discountPercentage}% launched`,
+            promotion: promotionResponse(promotion)
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+const endPromotion = async (req, res) => {
+    try {
+        const promotion = await prisma.promotion.findUnique({ where: { id: req.params.id } });
+        if (!promotion || !promotion.active) {
+            return res.status(404).json({ message: 'Active promotion not found' });
+        }
+
+        const endedPromotion = await prisma.promotion.update({
+            where: { id: promotion.id },
+            data: { active: false, endedAt: new Date() }
+        });
+
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('promotion', { type: 'PROMOTION_ENDED', promotionId: endedPromotion.id });
+        }
+
+        res.status(200).json({ message: 'Promotion ended', promotion: promotionResponse(endedPromotion) });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
@@ -297,5 +370,6 @@ module.exports = {
     adjustInventory,
     consumeInventory,
     releaseInventory,
-    applyPromotion
+    applyPromotion,
+    endPromotion
 };

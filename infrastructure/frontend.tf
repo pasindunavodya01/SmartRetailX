@@ -49,6 +49,7 @@ resource "aws_s3_object" "index" {
   source       = "../frontend/index.html"
   content_type = "text/html"
   etag         = filemd5("../frontend/index.html")
+  cache_control = "no-cache, no-store, must-revalidate"
 }
 
 resource "aws_s3_object" "style" {
@@ -57,6 +58,7 @@ resource "aws_s3_object" "style" {
   source       = "../frontend/style.css"
   content_type = "text/css"
   etag         = filemd5("../frontend/style.css")
+  cache_control = "no-cache, no-store, must-revalidate"
 }
 
 resource "aws_s3_object" "app" {
@@ -65,6 +67,7 @@ resource "aws_s3_object" "app" {
   source       = "../frontend/app.js"
   content_type = "application/javascript"
   etag         = filemd5("../frontend/app.js")
+  cache_control = "no-cache, no-store, must-revalidate"
 }
 
 output "frontend_url" {

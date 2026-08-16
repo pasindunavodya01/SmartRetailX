@@ -6,6 +6,8 @@ const SQS_QUEUE_URL = process.env.SQS_NOTIFICATION_QUEUE_URL;
 
 const sqsClient = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
+const isUniqueConstraintError = (error) => error?.code === 'P2002';
+
 const startNotificationWorker = () => {
     if (!SQS_QUEUE_URL) {
         console.warn('SQS_NOTIFICATION_QUEUE_URL is not set. Worker is disabled.');
@@ -22,6 +24,10 @@ const startNotificationWorker = () => {
                 const eventPayload = JSON.parse(snsBody.Message);
 
                 const { eventType, data } = eventPayload;
+                const sourceEventId = snsBody.MessageId;
+                if (!sourceEventId) {
+                    throw new Error('SNS MessageId is required for notification processing');
+                }
                 const customerId = data.customerId;
 
                 if (!customerId) {
@@ -44,14 +50,23 @@ const startNotificationWorker = () => {
                     return;
                 }
 
-                await prisma.notification.create({
-                    data: {
-                        userId: customerId,
-                        message: notificationMessage,
-                        type,
-                        isRead: false
+                try {
+                    await prisma.notification.create({
+                        data: {
+                            userId: customerId,
+                            message: notificationMessage,
+                            type,
+                            isRead: false,
+                            sourceEventId
+                        }
+                    });
+                } catch (error) {
+                    if (isUniqueConstraintError(error)) {
+                        console.log(`Skipped duplicate notification event ${sourceEventId}`);
+                        return;
                     }
-                });
+                    throw error;
+                }
 
                 console.log(`Notification saved and sent to user ${customerId}: ${notificationMessage}`);
             } catch (error) {

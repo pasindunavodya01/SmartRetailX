@@ -7,6 +7,7 @@ const API_URLS = {
 
 let currentUser = null;
 let token = localStorage.getItem('jwt_token');
+let activePromotion = null;
 
 // Utility: API Fetch wrapper
 async function apiCall(url, method = 'GET', body = null) {
@@ -112,10 +113,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 await apiCall(`${API_URLS.PROD}/products/promotions`, 'POST', { discountPercentage: Number(discount) });
                 showToast('Promotion launched!');
+                loadProducts();
             } catch (e) {}
         } else if (discount) {
             showToast('Invalid discount percentage', 'error');
         }
+    });
+    document.getElementById('btn-remove-promotion').addEventListener('click', async () => {
+        if (!activePromotion || !confirm('End the active promotion?')) return;
+        try {
+            await apiCall(`${API_URLS.PROD}/products/promotions/${activePromotion.id}`, 'DELETE');
+            setActivePromotion(null);
+            showToast('Promotion ended');
+            loadProducts();
+        } catch (e) {}
     });
     document.getElementById('btn-create-order').addEventListener('click', openOrderModal);
     document.getElementById('btn-read-all').addEventListener('click', markAllNotificationsRead);
@@ -141,6 +152,7 @@ function showApp() {
     if (currentUser.role === 'ADMIN') {
         document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
         document.getElementById('admin-panel').classList.remove('hidden');
+        if (!activePromotion) document.getElementById('btn-remove-promotion').classList.add('hidden');
     } else {
         document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
         document.getElementById('admin-panel').classList.add('hidden');
@@ -159,6 +171,7 @@ function logout() {
     
     if (window.appSocket) {
         window.appSocket.disconnect();
+        window.appSocket = null;
     }
 }
 
@@ -178,6 +191,19 @@ function connectWebSocket() {
     });
     
     window.appSocket.on('promotion', (data) => {
+        if (data?.type === 'PROMOTION_ENDED') {
+            activePromotion = null;
+            document.getElementById('promo-banner')?.remove();
+            document.getElementById('btn-remove-promotion').classList.add('hidden');
+            showToast('The promotion has ended');
+            loadProducts();
+            return;
+        }
+        if (data?.type !== 'DISCOUNT' || !data.promotion) return;
+        activePromotion = data.promotion;
+        if (currentUser?.role === 'ADMIN') {
+            document.getElementById('btn-remove-promotion').classList.remove('hidden');
+        }
         showToast(`🎉 ${data.message}`, 'success');
         
         // Add a permanent banner if it doesn't exist
@@ -202,6 +228,37 @@ function connectWebSocket() {
             loadProducts();
         }
     });
+}
+
+function setActivePromotion(promotion) {
+    activePromotion = promotion || null;
+    const banner = document.getElementById('promo-banner');
+    const endButton = document.getElementById('btn-remove-promotion');
+    const launchButton = document.getElementById('btn-promotion');
+
+    if (!activePromotion) {
+        banner?.remove();
+        endButton.classList.add('hidden');
+        if (currentUser?.role === 'ADMIN') launchButton.classList.remove('hidden');
+        return;
+    }
+
+    if (currentUser?.role === 'ADMIN') {
+        endButton.classList.remove('hidden');
+        launchButton.classList.add('hidden');
+    }
+    if (banner) return;
+
+    const newBanner = document.createElement('div');
+    newBanner.id = 'promo-banner';
+    newBanner.className = 'glass';
+    newBanner.style.padding = '1rem';
+    newBanner.style.marginBottom = '1rem';
+    newBanner.style.backgroundColor = 'rgba(46, 204, 113, 0.2)';
+    newBanner.style.borderLeft = '4px solid #2ecc71';
+    newBanner.textContent = `Special Offer: ${activePromotion.discountPercentage}% OFF all items`;
+    const dashboard = document.getElementById('view-dashboard');
+    dashboard.insertBefore(newBanner, dashboard.firstChild);
 }
 
 async function handleLogin(e) {
@@ -260,6 +317,7 @@ async function loadProducts() {
     try {
         const productsRes = await apiCall(`${API_URLS.PROD}/products`);
         let products = productsRes.items || [];
+        setActivePromotion(productsRes.promotion);
         let inventory = [];
         
         // Try fetching inventory if admin
@@ -298,7 +356,7 @@ async function loadProducts() {
                 <td>${p.sku}</td>
                 <td>${p.name}</td>
                 <td>${p.category || 'N/A'}</td>
-                <td>$${p.price}</td>
+                <td>${p.originalPrice ? `<s>$${p.originalPrice}</s> $${p.price}` : `$${p.price}`}</td>
                 <td>${stock}</td>
                 <td>${actions}</td>
             `;
@@ -320,7 +378,7 @@ async function loadOrders() {
             
             let statusBadge = `badge-status`;
             if(o.status === 'PENDING') statusBadge = 'badge-pending';
-            if(o.status === 'COMPLETED') statusBadge = 'badge-completed';
+            if(o.status === 'COMPLETED' || o.status === 'DELIVERED') statusBadge = 'badge-completed';
             if(o.status === 'CANCELLED') statusBadge = 'badge-cancelled';
 
             let actions = '';
@@ -423,7 +481,7 @@ window.editProduct = async function(id) {
         document.getElementById('prod-name').value = p.name;
         document.getElementById('prod-sku').value = p.sku;
         document.getElementById('prod-desc').value = p.description;
-        document.getElementById('prod-price').value = p.price;
+        document.getElementById('prod-price').value = p.originalPrice ?? p.price;
         document.getElementById('prod-cat').value = p.category || '';
         document.getElementById('modal-product-title').innerText = 'Edit Product';
         openModal('modal-product');

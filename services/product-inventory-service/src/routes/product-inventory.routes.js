@@ -11,9 +11,8 @@ const {
     deleteProduct,
     getInventory,
     adjustInventory,
-    consumeInventory,
-    releaseInventory,
-    applyPromotion
+    applyPromotion,
+    endPromotion
 } = require('../controllers/product-inventory.controller');
 
 const router = express.Router();
@@ -164,19 +163,6 @@ router.post('/inventory/adjust', authenticate, authorize('ADMIN'), adjustInvento
  *       200:
  *         description: Inventory consumed
  */
-router.post('/internal/inventory/consume', consumeInventory);
-
-/**
- * @swagger
- * /api/v1/internal/inventory/release:
- *   post:
- *     summary: Release inventory (Internal)
- *     tags: [Inventory]
- *     responses:
- *       200:
- *         description: Inventory released
- */
-router.post('/internal/inventory/release', releaseInventory);
 /**
  * @swagger
  * /api/v1/products/promotions:
@@ -190,5 +176,6 @@ router.post('/internal/inventory/release', releaseInventory);
  *         description: Promotion applied
  */
 router.post('/products/promotions', authenticate, authorize('ADMIN'), applyPromotion);
+router.delete('/products/promotions/:id', authenticate, authorize('ADMIN'), endPromotion);
 
 module.exports = router;

@@ -26,10 +26,4 @@ app.set('io', io);
 server.listen(PORT, () => {
     console.log(`Product Inventory Service running on port ${PORT}`);
     startInventoryWorker();
-    
-    // Simulate real-time promotions every 30 seconds
-    setInterval(() => {
-        const discount = Math.floor(Math.random() * 20) + 10;
-        io.emit('promotion', { message: `FLASH SALE! ${discount}% OFF all items for the next 5 minutes!` });
-    }, 30000);
 });

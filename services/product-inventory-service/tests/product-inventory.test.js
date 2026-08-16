@@ -14,6 +14,12 @@ jest.mock('../src/config/prisma', () => ({
         findMany: jest.fn(),
         update: jest.fn(),
         findUnique: jest.fn()
+    },
+    promotion: {
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn()
     }
 }));
 const prisma = require('../src/config/prisma');
@@ -24,6 +30,7 @@ const userToken = jwt.sign({ sub: 'user-2', role: 'USER' }, process.env.JWT_SECR
 describe('Product Inventory API', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        prisma.promotion.findFirst.mockResolvedValue(null);
     });
 
     test('GET /api/v1/products should return list of products', async () => {
@@ -61,5 +68,37 @@ describe('Product Inventory API', () => {
             .send({ sku: 'P2', name: 'Product 2', price: 20 });
 
         expect(response.statusCode).toBe(403);
+    });
+
+    test('POST /api/v1/products/promotions creates a reversible promotion without rewriting prices', async () => {
+        prisma.promotion.create.mockResolvedValue({
+            id: 'promo-1', discountPercentage: 20, active: true, createdAt: new Date()
+        });
+
+        const response = await request(app)
+            .post('/api/v1/products/promotions')
+            .set('Authorization', `Bearer ${adminToken}`)
+            .send({ discountPercentage: 20 });
+
+        expect(response.statusCode).toBe(201);
+        expect(response.body.promotion.id).toBe('promo-1');
+        expect(prisma.product.findMany).not.toHaveBeenCalled();
+    });
+
+    test('DELETE /api/v1/products/promotions/:id ends an active promotion', async () => {
+        prisma.promotion.findUnique.mockResolvedValue({ id: 'promo-1', active: true });
+        prisma.promotion.update.mockResolvedValue({
+            id: 'promo-1', discountPercentage: 20, active: false, createdAt: new Date()
+        });
+
+        const response = await request(app)
+            .delete('/api/v1/products/promotions/promo-1')
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(response.statusCode).toBe(200);
+        expect(prisma.promotion.update).toHaveBeenCalledWith(expect.objectContaining({
+            where: { id: 'promo-1' },
+            data: expect.objectContaining({ active: false })
+        }));
     });
 });
