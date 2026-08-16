@@ -1,8 +1,8 @@
 const API_URLS = {
-    USER: 'http://smartretailx-alb-882710877.us-east-1.elb.amazonaws.com/api/v1',
-    NOTIF: 'http://smartretailx-alb-882710877.us-east-1.elb.amazonaws.com/api/v1',
-    ORDER: 'http://smartretailx-alb-882710877.us-east-1.elb.amazonaws.com/api/v1',
-    PROD: 'http://smartretailx-alb-882710877.us-east-1.elb.amazonaws.com/api/v1'
+    USER: 'https://b22iwzvgra.execute-api.us-east-1.amazonaws.com/api/v1',
+    NOTIF: 'https://b22iwzvgra.execute-api.us-east-1.amazonaws.com/api/v1',
+    ORDER: 'https://b22iwzvgra.execute-api.us-east-1.amazonaws.com/api/v1',
+    PROD: 'https://b22iwzvgra.execute-api.us-east-1.amazonaws.com/api/v1'
 };
 
 let currentUser = null;

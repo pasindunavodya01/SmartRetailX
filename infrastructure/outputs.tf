@@ -1,5 +1,10 @@
+output "api_gateway_url" {
+  description = "The URL of the API Gateway (Use this to access your APIs!)"
+  value       = aws_apigatewayv2_api.main.api_endpoint
+}
+
 output "alb_dns_name" {
-  description = "The DNS name of the Application Load Balancer (Use this to access your APIs!)"
+  description = "The DNS name of the internal Application Load Balancer"
   value       = "http://${aws_lb.main.dns_name}"
 }
 

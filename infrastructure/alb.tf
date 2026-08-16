@@ -20,10 +20,10 @@ resource "aws_security_group" "alb" {
 
 resource "aws_lb" "main" {
   name               = "${var.project_name}-alb"
-  internal           = false
+  internal           = true
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
-  subnets            = module.vpc.public_subnets
+  subnets            = module.vpc.private_subnets
 }
 
 resource "aws_lb_listener" "http" {
