@@ -208,10 +208,44 @@ const updateOrderStatus = async (req, res) => {
     }
 };
 
+const simulateDeliveryUpdate = async (req, res) => {
+    try {
+        if (req.user?.role !== 'ADMIN') {
+            return res.status(403).json({ message: 'Only admins can simulate delivery updates' });
+        }
+
+        const { trackingStatus } = req.body;
+        if (!trackingStatus) {
+            return res.status(400).json({ message: 'trackingStatus is required' });
+        }
+
+        const currentOrder = await prisma.order.findUnique({
+            where: { id: req.params.id }
+        });
+
+        if (!currentOrder) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        // Publish DeliveryUpdate event to SNS
+        await publishOrderEvent('DeliveryUpdate', {
+            id: currentOrder.id,
+            customerId: currentOrder.customerId,
+            trackingStatus
+        });
+
+        res.status(200).json({ message: `Delivery update '${trackingStatus}' sent successfully for order ${currentOrder.id}` });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
 module.exports = {
     listOrders,
     createOrder,
     getOrderById,
     updateOrder,
-    updateOrderStatus
+    updateOrderStatus,
+    simulateDeliveryUpdate
 };

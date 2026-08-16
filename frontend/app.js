@@ -1,8 +1,8 @@
 const API_URLS = {
-    USER: 'http://localhost:3001/api/v1',
-    NOTIF: 'http://localhost:3002/api/v1',
-    ORDER: 'http://localhost:3003/api/v1',
-    PROD: 'http://localhost:3004/api/v1'
+    USER: 'http://smartretailx-alb-882710877.us-east-1.elb.amazonaws.com/api/v1',
+    NOTIF: 'http://smartretailx-alb-882710877.us-east-1.elb.amazonaws.com/api/v1',
+    ORDER: 'http://smartretailx-alb-882710877.us-east-1.elb.amazonaws.com/api/v1',
+    PROD: 'http://smartretailx-alb-882710877.us-east-1.elb.amazonaws.com/api/v1'
 };
 
 let currentUser = null;
@@ -13,7 +13,7 @@ async function apiCall(url, method = 'GET', body = null) {
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const config = { method, headers };
+    const config = { method, headers, cache: 'no-store' };
     if (body) config.body = JSON.stringify(body);
 
     try {
@@ -135,6 +135,7 @@ function showApp() {
     }
     
     switchView('dashboard');
+    connectWebSocket();
 }
 
 function logout() {
@@ -143,6 +144,47 @@ function logout() {
     localStorage.removeItem('jwt_token');
     document.getElementById('auth-section').classList.remove('hidden');
     document.getElementById('app-section').classList.add('hidden');
+    
+    if (window.appSocket) {
+        window.appSocket.disconnect();
+    }
+}
+
+function connectWebSocket() {
+    if (window.appSocket) return;
+    
+    // Extract base domain from API_URLS
+    const url = new URL(API_URLS.PROD);
+    const domain = `${url.protocol}//${url.host}`;
+    
+    window.appSocket = io(domain, {
+        path: '/api/v1/products/socket.io/'
+    });
+    
+    window.appSocket.on('connect', () => {
+        console.log('Connected to real-time events!');
+    });
+    
+    window.appSocket.on('promotion', (data) => {
+        showToast(`🎉 ${data.message}`, 'success');
+        
+        // Add a permanent banner if it doesn't exist
+        if (!document.getElementById('promo-banner')) {
+            const banner = document.createElement('div');
+            banner.id = 'promo-banner';
+            banner.className = 'glass';
+            banner.style.padding = '1rem';
+            banner.style.marginBottom = '1rem';
+            banner.style.backgroundColor = 'rgba(46, 204, 113, 0.2)';
+            banner.style.borderLeft = '4px solid #2ecc71';
+            banner.innerHTML = `<strong>Special Offer:</strong> ${data.message}`;
+            
+            const dashboard = document.getElementById('view-dashboard');
+            dashboard.insertBefore(banner, dashboard.firstChild);
+        } else {
+            document.getElementById('promo-banner').innerHTML = `<strong>Special Offer:</strong> ${data.message}`;
+        }
+    });
 }
 
 async function handleLogin(e) {
@@ -270,6 +312,9 @@ async function loadOrders() {
             }
             if (currentUser.role === 'ADMIN' && o.status === 'PENDING') {
                  actions += ` <button class="btn-secondary btn-small" onclick="completeOrder('${o.id}')">Complete</button>`;
+            }
+            if (currentUser.role === 'ADMIN') {
+                 actions += ` <button class="btn-secondary btn-small" onclick="simulateDelivery('${o.id}')">Delivery</button>`;
             }
             if(!actions) actions = 'N/A';
 
@@ -466,6 +511,15 @@ window.completeOrder = async function(id) {
     }
 }
 
+window.simulateDelivery = async function(id) {
+    const status = prompt('Enter Delivery Status (e.g. Out for Delivery, Delayed, Delivered):', 'Out for Delivery');
+    if(status) {
+        try {
+            await apiCall(`${API_URLS.ORDER}/orders/${id}/tracking`, 'POST', { trackingStatus: status });
+            showToast('Delivery update sent to customer via EDA!');
+        } catch(e) {}
+    }
+}
 
 // Notification Actions
 async function markRead(id) {

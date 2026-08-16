@@ -36,6 +36,9 @@ const startNotificationWorker = () => {
                     notificationMessage = `Your order ${data.id} has been placed successfully and is PENDING.`;
                 } else if (eventType === 'OrderCancelled') {
                     notificationMessage = `Your order ${data.id} has been CANCELLED.`;
+                } else if (eventType === 'DeliveryUpdate') {
+                    notificationMessage = `Delivery Update for Order ${data.id}: ${data.trackingStatus}`;
+                    type = 'DELIVERY';
                 } else {
                     console.log(`Ignored eventType: ${eventType}`);
                     return;
@@ -46,7 +49,7 @@ const startNotificationWorker = () => {
                         userId: customerId,
                         message: notificationMessage,
                         type,
-                        read: false
+                        isRead: false
                     }
                 });
 

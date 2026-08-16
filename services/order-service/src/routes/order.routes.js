@@ -7,7 +7,8 @@ const {
     createOrder,
     getOrderById,
     updateOrder,
-    updateOrderStatus
+    updateOrderStatus,
+    simulateDeliveryUpdate
 } = require('../controllers/order.controller');
 
 const router = express.Router();
@@ -100,6 +101,24 @@ router.put('/:id', authenticate, updateOrder);
  */
 router.patch('/:id/status', authenticate, updateOrderStatus);
 
-
+/**
+ * @swagger
+ * /api/v1/orders/{id}/tracking:
+ *   post:
+ *     summary: Simulate a delivery tracking update (Admin)
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Delivery update sent
+ */
+router.post('/:id/tracking', authenticate, authorize('ADMIN'), simulateDeliveryUpdate);
 
 module.exports = router;
