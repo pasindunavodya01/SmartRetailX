@@ -9,9 +9,9 @@ const normalizeStatus = (status) => {
     return allowedStatuses.includes(value) ? value : null;
 };
 
-// Initialize AWS SNS Client
-// It automatically picks up AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY from the environment
-const snsClient = new SNSClient({ region: process.env.AWS_REGION || 'us-east-1' });
+// Initialize AWS SNS Client and capture it with X-Ray for distributed tracing
+const AWSXRay = require('aws-xray-sdk');
+const snsClient = AWSXRay.captureAWSv3Client(new SNSClient({ region: process.env.AWS_REGION || 'us-east-1' }));
 const SNS_TOPIC_ARN = process.env.SNS_ORDER_EVENTS_TOPIC_ARN; 
 
 // Circuit Breaker Options
