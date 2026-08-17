@@ -25,7 +25,7 @@ resource "aws_s3_bucket_public_access_block" "frontend" {
 }
 
 resource "aws_s3_bucket_policy" "frontend" {
-  bucket = aws_s3_bucket.frontend.id
+  bucket     = aws_s3_bucket.frontend.id
   depends_on = [aws_s3_bucket_public_access_block.frontend]
 
   policy = jsonencode({
@@ -44,29 +44,29 @@ resource "aws_s3_bucket_policy" "frontend" {
 
 # Upload files
 resource "aws_s3_object" "index" {
-  bucket       = aws_s3_bucket.frontend.id
-  key          = "index.html"
-  source       = "../frontend/index.html"
-  content_type = "text/html"
-  etag         = filemd5("../frontend/index.html")
+  bucket        = aws_s3_bucket.frontend.id
+  key           = "index.html"
+  source        = "../frontend/index.html"
+  content_type  = "text/html"
+  etag          = filemd5("../frontend/index.html")
   cache_control = "no-cache, no-store, must-revalidate"
 }
 
 resource "aws_s3_object" "style" {
-  bucket       = aws_s3_bucket.frontend.id
-  key          = "style.css"
-  source       = "../frontend/style.css"
-  content_type = "text/css"
-  etag         = filemd5("../frontend/style.css")
+  bucket        = aws_s3_bucket.frontend.id
+  key           = "style.css"
+  source        = "../frontend/style.css"
+  content_type  = "text/css"
+  etag          = filemd5("../frontend/style.css")
   cache_control = "no-cache, no-store, must-revalidate"
 }
 
 resource "aws_s3_object" "app" {
-  bucket       = aws_s3_bucket.frontend.id
-  key          = "app.js"
-  source       = "../frontend/app.js"
-  content_type = "application/javascript"
-  etag         = filemd5("../frontend/app.js")
+  bucket        = aws_s3_bucket.frontend.id
+  key           = "app.js"
+  source        = "../frontend/app.js"
+  content_type  = "application/javascript"
+  etag          = filemd5("../frontend/app.js")
   cache_control = "no-cache, no-store, must-revalidate"
 }
 

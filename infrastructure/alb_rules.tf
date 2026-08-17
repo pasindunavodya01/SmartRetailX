@@ -7,7 +7,7 @@ resource "aws_lb_target_group" "user" {
   target_type = "ip"
 
   health_check {
-    path = "/api/v1/health"
+    path    = "/api/v1/health"
     matcher = "200"
   }
 }
@@ -20,7 +20,7 @@ resource "aws_lb_target_group" "product" {
   target_type = "ip"
 
   health_check {
-    path = "/api/v1/health"
+    path    = "/api/v1/health"
     matcher = "200"
   }
 }
@@ -33,7 +33,7 @@ resource "aws_lb_target_group" "order" {
   target_type = "ip"
 
   health_check {
-    path = "/api/v1/health"
+    path    = "/api/v1/health"
     matcher = "200"
   }
 }
@@ -96,7 +96,7 @@ resource "aws_lb_target_group" "notification" {
   target_type = "ip"
 
   health_check {
-    path = "/api/v1/health"
+    path    = "/api/v1/health"
     matcher = "200"
   }
 }

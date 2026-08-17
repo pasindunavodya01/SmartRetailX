@@ -62,6 +62,10 @@ resource "aws_ecs_service" "user" {
     container_name   = "user-service"
     container_port   = 3001
   }
+
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
 }
 
 # Product Service
@@ -118,6 +122,10 @@ resource "aws_ecs_service" "product" {
     target_group_arn = aws_lb_target_group.product.arn
     container_name   = "product-service"
     container_port   = 3004
+  }
+
+  lifecycle {
+    ignore_changes = [desired_count]
   }
 }
 
@@ -176,6 +184,10 @@ resource "aws_ecs_service" "order" {
     container_name   = "order-service"
     container_port   = 3003
   }
+
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
 }
 
 # Notification Service (Worker - no ALB)
@@ -232,5 +244,9 @@ resource "aws_ecs_service" "notification" {
     target_group_arn = aws_lb_target_group.notification.arn
     container_name   = "notification-service"
     container_port   = 3002
+  }
+
+  lifecycle {
+    ignore_changes = [desired_count]
   }
 }
