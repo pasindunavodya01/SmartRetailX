@@ -31,11 +31,18 @@ module "db" {
   manage_master_user_password = false
   port                        = 5432
 
-  multi_az               = false
+  multi_az               = true
   create_db_subnet_group = true
   vpc_security_group_ids = [aws_security_group.rds.id]
 
   subnet_ids = module.vpc.private_subnets
 
+  # Backup and Recovery Configuration (Task 5 Requirement)
+  backup_retention_period = 7
+  backup_window           = "02:00-03:00"
+  maintenance_window      = "Sun:04:00-Sun:05:00"
+  copy_tags_to_snapshot   = true
+
+  # Set to true for easier lab cleanup, but backups will still run daily
   skip_final_snapshot = true
 }
