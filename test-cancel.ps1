@@ -1,9 +1,9 @@
 # ---- CONFIG ----
-$token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3M2UzOWRkNi05ZWUyLTRkZjctOTNhZi01ZTRmMjM4MDhhMjkiLCJlbWFpbCI6ImFsaWNlQHNtYXJ0cmV0YWlseC5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3ODY0NzE1NDcsImV4cCI6MTc4NjQ3NTE0N30.YaJwQCpBXz77awibwyhUVI52yG0y4Cpbh5HCjR0WpNU"
+$token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0YTM5YWY4Zi01NGMxLTRlNzYtODI2My1hY2EwZjUzZTk5MTkiLCJlbWFpbCI6ImFkbWluQHNtYXJ0cmV0YWlseDIuY29tIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzg2OTQ5NDE3LCJleHAiOjE3ODY5NTMwMTd9.9y97mtUxO6Xb6zbA7bXflpBmSGfAy2lt8vw_QKI_1Ew"
 $headers = @{ Authorization = "Bearer $token"; "Content-Type" = "application/json" }
-$ordersBase = "http://localhost:3003/api/v1/orders"
-$productsBase = "http://localhost:3004/api/v1/products"
-$sku = "SKU-002"
+$ordersBase = "https://b22iwzvgra.execute-api.us-east-1.amazonaws.com/api/v1/orders"
+$productsBase = "https://b22iwzvgra.execute-api.us-east-1.amazonaws.com/api/v1/products"
+$sku = "PROD-002"
 
 function Get-Stock {
     param($label)
