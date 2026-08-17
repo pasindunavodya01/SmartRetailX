@@ -1,5 +1,6 @@
 const prisma = require('../config/prisma');
 const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
+const CircuitBreaker = require('opossum');
 
 const normalizeStatus = (status) => {
     const value = String(status || '').toUpperCase();
@@ -12,6 +13,30 @@ const normalizeStatus = (status) => {
 // It automatically picks up AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY from the environment
 const snsClient = new SNSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 const SNS_TOPIC_ARN = process.env.SNS_ORDER_EVENTS_TOPIC_ARN; 
+
+// Circuit Breaker Options
+const breakerOptions = {
+    timeout: 3000, // If function takes longer than 3 seconds, trigger a failure
+    errorThresholdPercentage: 50, // When 50% of requests fail, trip the circuit
+    resetTimeout: 10000 // After 10 seconds, try again
+};
+
+// Wrap the SNS send function
+const publishToSNS = async (command) => {
+    return await snsClient.send(command);
+};
+
+const snsCircuitBreaker = new CircuitBreaker(publishToSNS, breakerOptions);
+
+snsCircuitBreaker.fallback((command, error) => {
+    console.error(`Circuit Breaker Fallback: SNS is down or timing out. Error: ${error?.message || 'Unknown error'}`);
+    // In a real production system, this would write to a local dead-letter queue or database table for retry
+    return null; 
+});
+
+snsCircuitBreaker.on('open', () => console.warn('SNS Circuit Breaker is OPEN'));
+snsCircuitBreaker.on('halfOpen', () => console.info('SNS Circuit Breaker is HALF-OPEN'));
+snsCircuitBreaker.on('close', () => console.info('SNS Circuit Breaker is CLOSED')); 
 
 const publishOrderEvent = async (eventType, orderData) => {
     if (!SNS_TOPIC_ARN) {
@@ -34,11 +59,16 @@ const publishOrderEvent = async (eventType, orderData) => {
                 }
             }
         });
-        const response = await snsClient.send(command);
-        console.log(`Successfully published ${eventType} to SNS. MessageId: ${response.MessageId}`);
+        
+        // Execute through Circuit Breaker
+        const response = await snsCircuitBreaker.fire(command);
+        
+        if (response) {
+            console.log(`Successfully published ${eventType} to SNS. MessageId: ${response.MessageId}`);
+        }
     } catch (error) {
         console.error(`Failed to publish ${eventType} to SNS`, error);
-        // In a production system, you would save this to a dead-letter queue or retry mechanism
+        // Fallback logic is handled by the Circuit Breaker
     }
 };
 
