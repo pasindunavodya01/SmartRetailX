@@ -230,9 +230,13 @@ const updateOrderStatus = async (req, res) => {
             include: { items: true }
         });
 
-        // Publish OrderCancelled event if status changes to CANCELLED
+        // Publish events for state transitions
         if (normalizedStatus === 'CANCELLED' && currentOrder.status !== 'CANCELLED') {
             await publishOrderEvent('OrderCancelled', order);
+        } else if (normalizedStatus === 'DELIVERED' && currentOrder.status !== 'DELIVERED') {
+            await publishOrderEvent('OrderDelivered', order);
+        } else if (normalizedStatus === 'SHIPPED' && currentOrder.status !== 'SHIPPED') {
+            await publishOrderEvent('OrderShipped', order);
         }
 
         res.status(200).json(order);

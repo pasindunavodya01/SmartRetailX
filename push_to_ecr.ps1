@@ -34,6 +34,10 @@ foreach ($service in $services) {
     # Push to ECR
     Write-Host "Pushing to ECR..." -ForegroundColor Cyan
     docker push ${ECR_URL}/${repoName}:latest
+
+    # Force ECS to pull the new image and redeploy
+    Write-Host "Forcing ECS service restart for $repoName..." -ForegroundColor Cyan
+    aws ecs update-service --cluster "${REPO_PREFIX}-cluster" --service $repoName --force-new-deployment > $null
 }
 
 Write-Host "`nAll services successfully pushed to ECR!" -ForegroundColor Green

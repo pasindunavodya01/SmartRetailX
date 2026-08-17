@@ -148,14 +148,18 @@ function showApp() {
     document.getElementById('app-section').classList.remove('hidden');
     document.getElementById('user-name-display').innerText = `${currentUser.firstName} ${currentUser.lastName}`;
     
-    // Apply admin rules
+    // Configure role-specific layouts
     if (currentUser.role === 'ADMIN') {
         document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
         document.getElementById('admin-panel').classList.remove('hidden');
+        document.getElementById('dashboard-admin').classList.remove('hidden');
+        document.getElementById('dashboard-user').classList.add('hidden');
         if (!activePromotion) document.getElementById('btn-remove-promotion').classList.add('hidden');
     } else {
         document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
         document.getElementById('admin-panel').classList.add('hidden');
+        document.getElementById('dashboard-admin').classList.add('hidden');
+        document.getElementById('dashboard-user').classList.remove('hidden');
     }
     
     switchView('dashboard');
@@ -296,20 +300,35 @@ async function handleRegister(e) {
 // Views Loaders
 async function loadDashboard() {
     try {
-        const [productsRes, ordersRes, notifsRes] = await Promise.all([
-            apiCall(`${API_URLS.PROD}/products`),
-            apiCall(`${API_URLS.ORDER}/orders`),
-            apiCall(`${API_URLS.NOTIF}/notifications`)
-        ]);
-        
-        const products = productsRes.items || [];
-        const orders = ordersRes.items || [];
-        const notifs = notifsRes.items || [];
-        
-        document.getElementById('stat-products').innerText = products.length;
-        document.getElementById('stat-orders').innerText = orders.length;
-        const unread = notifs.filter(n => !n.isRead).length;
-        document.getElementById('stat-notifs').innerText = unread;
+        if (currentUser.role === 'ADMIN') {
+            const [productsRes, inventoryRes, notifsRes] = await Promise.all([
+                apiCall(`${API_URLS.PROD}/products`),
+                apiCall(`${API_URLS.PROD}/inventory`).catch(()=>({items: []})),
+                apiCall(`${API_URLS.NOTIF}/notifications`)
+            ]);
+            
+            const products = productsRes.items || [];
+            const inventory = inventoryRes.items || [];
+            const notifs = notifsRes.items || [];
+            const lowStockCount = inventory.filter(i => i.stock < 10).length;
+            
+            document.getElementById('stat-admin-products').innerText = products.length;
+            document.getElementById('stat-admin-inventory').innerText = lowStockCount;
+            document.getElementById('stat-admin-notifs').innerText = notifs.length;
+        } else {
+            const [ordersRes, notifsRes] = await Promise.all([
+                apiCall(`${API_URLS.ORDER}/orders`),
+                apiCall(`${API_URLS.NOTIF}/notifications`)
+            ]);
+            
+            const orders = ordersRes.items || [];
+            const notifs = notifsRes.items || [];
+            const unread = notifs.filter(n => !n.isRead).length;
+            
+            document.getElementById('dash-user-name').innerText = currentUser.firstName;
+            document.getElementById('stat-user-orders').innerText = orders.length;
+            document.getElementById('stat-user-notifs').innerText = unread;
+        }
     } catch (e) { console.error(e); }
 }
 
@@ -382,14 +401,13 @@ async function loadOrders() {
             if(o.status === 'CANCELLED') statusBadge = 'badge-cancelled';
 
             let actions = '';
-            if (o.status !== 'CANCELLED') {
-                actions = `<button class="btn-danger btn-small" onclick="cancelOrder('${o.id}')">Cancel</button>`;
-            }
-            if (currentUser.role === 'ADMIN' && o.status === 'PENDING') {
-                 actions += ` <button class="btn-secondary btn-small" onclick="completeOrder('${o.id}')">Deliver</button>`;
-            }
-            if (currentUser.role === 'ADMIN') {
-                 actions += ` <button class="btn-secondary btn-small" onclick="simulateDelivery('${o.id}')">Delivery</button>`;
+            if (o.status !== 'CANCELLED' && o.status !== 'DELIVERED' && o.status !== 'COMPLETED') {
+                actions += `<button class="btn-danger btn-small" onclick="cancelOrder('${o.id}')">Cancel</button>`;
+                
+                if (currentUser.role === 'ADMIN') {
+                     actions += ` <button class="btn-secondary btn-small" onclick="completeOrder('${o.id}')">Deliver</button>`;
+                     actions += ` <button class="btn-secondary btn-small" onclick="simulateDelivery('${o.id}')">Delivery</button>`;
+                }
             }
             if(!actions) actions = 'N/A';
 

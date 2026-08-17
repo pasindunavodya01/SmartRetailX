@@ -65,18 +65,69 @@
             <div class="content-scroll">
                 <!-- Dashboard View -->
                 <div id="view-dashboard" class="view active-view">
-                    <div class="stats-grid">
-                        <div class="stat-card glass">
-                            <h3>Total Products</h3>
-                            <div class="stat-value" id="stat-products">--</div>
+                    
+                    <!-- ADMIN DASHBOARD -->
+                    <div id="dashboard-admin" class="dashboard-layout hidden">
+                        <div class="dashboard-header-text">
+                            <h3 class="gradient-text">Admin Command Center</h3>
+                            <p>Overview of system health, inventory, and active events.</p>
                         </div>
-                        <div class="stat-card glass">
-                            <h3>Your Orders</h3>
-                            <div class="stat-value" id="stat-orders">--</div>
+                        <div class="stats-grid">
+                            <div class="stat-card glass hover-float interactive-glow">
+                                <div class="stat-icon">📦</div>
+                                <h3>Total Products</h3>
+                                <div class="stat-value" id="stat-admin-products">--</div>
+                                <div class="stat-trend trend-up">Active Catalog</div>
+                            </div>
+                            <div class="stat-card glass hover-float interactive-glow">
+                                <div class="stat-icon">⚠️</div>
+                                <h3>Low Stock Items</h3>
+                                <div class="stat-value" id="stat-admin-inventory">--</div>
+                                <div class="stat-trend trend-down">Needs attention</div>
+                            </div>
+                            <div class="stat-card glass hover-float interactive-glow">
+                                <div class="stat-icon">🔔</div>
+                                <h3>System Events</h3>
+                                <div class="stat-value" id="stat-admin-notifs">--</div>
+                                <div class="stat-trend trend-neutral">All broadcasts</div>
+                            </div>
                         </div>
-                        <div class="stat-card glass">
-                            <h3>Unread Notifications</h3>
-                            <div class="stat-value" id="stat-notifs">--</div>
+                        <div class="quick-actions-panel glass">
+                            <h4>Administrative Actions</h4>
+                            <div class="action-buttons">
+                                <button class="btn-primary" onclick="switchView('products')">Manage Catalog</button>
+                                <button class="btn-secondary" onclick="switchView('orders')">Fulfill Orders</button>
+                                <button class="btn-secondary" onclick="switchView('profile')">System Metrics</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- USER DASHBOARD -->
+                    <div id="dashboard-user" class="dashboard-layout hidden">
+                        <div class="dashboard-header-text">
+                            <h3>Welcome back, <span id="dash-user-name" class="gradient-text">User</span>!</h3>
+                            <p>Here is what is happening with your account today.</p>
+                        </div>
+                        <div class="stats-grid">
+                            <div class="stat-card glass hover-float interactive-glow">
+                                <div class="stat-icon">🛍️</div>
+                                <h3>Your Orders</h3>
+                                <div class="stat-value" id="stat-user-orders">--</div>
+                                <div class="stat-trend trend-up">Total placed</div>
+                            </div>
+                            <div class="stat-card glass hover-float interactive-glow">
+                                <div class="stat-icon">📫</div>
+                                <h3>Unread Messages</h3>
+                                <div class="stat-value" id="stat-user-notifs">--</div>
+                                <div class="stat-trend trend-neutral">In your inbox</div>
+                            </div>
+                        </div>
+                        <div class="user-featured glass interactive-glow">
+                            <div class="featured-content">
+                                <h4>Ready to shop?</h4>
+                                <p>Check out our latest product catalog and explore any active promotions happening right now!</p>
+                                <button class="btn-primary" onclick="switchView('products')">Browse Products</button>
+                            </div>
                         </div>
                     </div>
                 </div>

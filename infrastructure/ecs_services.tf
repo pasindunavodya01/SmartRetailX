@@ -31,7 +31,7 @@ resource "aws_ecs_task_definition" "user" {
       { name = "PORT", value = "3001" },
       { name = "DATABASE_URL", value = local.db_url },
       { name = "JWT_SECRET", value = "production-super-secret-key" },
-      { name = "FORCE_DEPLOY", value = "10" }
+      { name = "FORCE_DEPLOY", value = "11" }
     ]
     logConfiguration = {
       logDriver = "awslogs"
