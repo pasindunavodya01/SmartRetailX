@@ -29,17 +29,21 @@ resource "aws_security_group" "ecs_tasks" {
 
 # Placeholder ECR Repositories
 resource "aws_ecr_repository" "user_service" {
-  name = "${var.project_name}-user-service"
+  name         = "${var.project_name}-user-service"
+  force_delete = true
 }
 
 resource "aws_ecr_repository" "product_service" {
-  name = "${var.project_name}-product-service"
+  name         = "${var.project_name}-product-service"
+  force_delete = true
 }
 
 resource "aws_ecr_repository" "order_service" {
-  name = "${var.project_name}-order-service"
+  name         = "${var.project_name}-order-service"
+  force_delete = true
 }
 
 resource "aws_ecr_repository" "notification_service" {
-  name = "${var.project_name}-notification-service"
+  name         = "${var.project_name}-notification-service"
+  force_delete = true
 }
