@@ -1,0 +1,321 @@
+SmartRetailX Global Commerce Platform
+A Cloud-Native Distributed Microservices Architecture on AWS
+Module: COMP60010 – Enterprise Cloud and Distributed Web Applications
+Student: Pasindu Navodya
+Deployment: Amazon ECS Fargate  |  IaC: Terraform
+Database: Amazon RDS PostgreSQL + DynamoDB  |  Messaging: SNS + SQS  |  Compute: AWS Lambda
+Observability: Amazon CloudWatch + AWS X-Ray
+
+Table of Contents
+Table of Contents1
+1. Introduction1
+1.1 Background1
+1.2 Objectives1
+1.3 Scope1
+2. System Design and Architecture1
+2.1 Architectural Approach1
+Architectural justification1
+2.2 Container Orchestration: ECS Fargate vs. EKS1
+2.3 Infrastructure as Code: Terraform vs. CloudFormation1
+2.4 API Architecture1
+2.5 Database Architecture1
+2.6 Event-Driven Architecture1
+2.7 Serverless Event Processing1
+2.8 Real-Time Pricing and Promotions1
+2.9 Security Architecture1
+2.10 Infrastructure as Code Coverage1
+3. Implementation1
+3.1 Microservices1
+3.2 Deployment Pipeline1
+3.3 Secrets and Configuration1
+4. Fault Tolerance and Resilience1
+4.1 Load Balancing1
+4.2 Auto Scaling1
+4.3 Circuit Breaker1
+4.4 Service Failure and Recovery Testing1
+4.5 Multi-AZ, Not Multi-Region, for the Prototype1
+5. Monitoring and Observability1
+5.1 Amazon CloudWatch1
+5.2 AWS X-Ray1
+6. Testing and Validation1
+6.1–6.6 Testing Levels1
+6.7 Consolidated Automated Test Results1
+6.8 Performance Testing1
+7. Distributed-System Design Discussion1
+7.1 Eventual Consistency1
+7.2 Saga Pattern1
+7.3 CQRS1
+8. Critical Architectural Evaluation1
+8.1 Strengths1
+8.2 Weaknesses1
+8.3 Cost vs. Availability1
+8.4 Why Not Implement Every Production Feature?1
+9. Challenges Encountered1
+10. Limitations and Future Improvements1
+10.1 Payment Service1
+10.2 Delivery / Logistics Tracking1
+10.3 Multi-Region Deployment1
+10.4 Identity Federation1
+10.5 Full Saga Orchestration and CQRS1
+10.6 Production-Scale Performance Validation1
+10.7 Data Architecture1
+10.8 Production Secrets Management1
+10.9 Observability Migration1
+11. Conclusion1
+12. References1
+Academic sources1
+AWS / industry sources1
+13. Appendices1
+Appendix A – AWS Infrastructure1
+Appendix B – Container Deployment1
+Appendix C – API and Application1
+Appendix D – Database1
+Appendix E – Event-Driven Architecture1
+Appendix F – Security1
+Appendix G – Resilience1
+Appendix H – Testing1
+Appendix I – Monitoring1
+Appendix J – Performance1
+Appendix K – Infrastructure as Code1
+
+
+
+1. Introduction
+1.1 Background
+SmartRetailX is a multinational retail technology organisation providing cloud-based commerce services to supermarkets, online retailers, logistics providers and warehouse operators across Europe, Asia and the Middle East. Its existing platform is a monolithic application that covers online shopping, inventory, order processing, payments, logistics, and recommendations.
+A monolith simplifies initial development, but at SmartRetailX's scale it creates real problems: any change requires redeploying the whole application, scaling one busy function means scaling everything, and a failure in one area can affect unrelated functions — all serious risks for a global platform that must stay reliable during demand spikes.
+Microservices address this by decomposing the application into independently deployable services, which the literature identifies as a key advantage for large e-commerce systems (Hasselbring and Steinacker, 2017), built from small, self-contained, cloud-oriented components (Pahl and Jamshidi, 2016). They are not automatically superior, however: distribution introduces network failures, operational complexity and eventual-consistency challenges (Fowler, 2014; 2015). This report therefore treats every architectural choice as a trade-off, evaluated against scalability, availability, resilience, maintainability and cost.
+1.2 Objectives
+The project's objectives were to:
+Decompose the application into microservices organised around business capabilities.
+Containerise the services with Docker and deploy via ECS Fargate.
+Expose a secure public API through API Gateway, backed by a private internal ALB.
+Implement asynchronous communication using SNS and SQS.
+Integrate managed relational storage via RDS PostgreSQL.
+Implement serverless event processing with Lambda and DynamoDB.
+Implement JWT authentication and role-based access control.
+Implement circuit breaking and service auto-scaling.
+Implement real-time pricing/promotion sync via WebSockets.
+Implement CloudWatch monitoring and X-Ray tracing.
+Validate the system through unit, integration, security, resilience and performance testing.
+Manage infrastructure as code using Terraform.
+Critically evaluate the prototype against a production-scale global platform.
+1.3 Scope
+The prototype implements four core services: User Service (3001) – authentication and RBAC; Product/Inventory Service (3004) – catalogue and stock; Order Service (3003) – creation, cancellation and status; Notification Service (3002) – event processing.
+It also includes Docker/ECR, ECS Fargate with an ALB, API Gateway with a VPC Link, a VPC with public/private subnets, RDS PostgreSQL (Multi-AZ), SNS/SQS, Lambda/DynamoDB, ECS auto-scaling, a circuit breaker, CloudWatch, X-Ray, Swagger documentation, Jest/Supertest tests, Locust load testing, and WebSocket-based real-time pricing.
+A dedicated payment gateway, loyalty/recommendation systems, full active-active multi-region deployment, complete Saga, and OAuth 2.0 federation were scoped out as future work rather than implemented — the prototype runs in a single AWS Region across multiple Availability Zones. This keeps the report an honest account of what was built, not what is proposed.
+2. System Design and Architecture
+2.1 Architectural Approach
+The platform separates business responsibilities into four independently deployable services, each with its own container, task definition and scaling policy. The principal request flow is:
+Client → Amazon API Gateway → VPC Link → Internal ALB → ECS Fargate Service → Database / Event Infrastructure
+This decomposition follows business capabilities rather than the monolith's technical layers, consistent with the view that service boundaries should represent meaningful, independently evolvable capabilities (Lewis and Fowler, 2014).
+Architectural justification
+A monolith would be cheaper to run initially, but SmartRetailX needs independent scaling: inventory traffic can spike during promotions while notification load stays flat, and only ECS lets each service scale on its own. The cost is operational complexity — four services mean more containers, logs, deployments and failure points — which is why the design also invests in centralised monitoring and explicit resilience mechanisms (Sections 4–5).
+2.2 Container Orchestration: ECS Fargate vs. EKS
+ECS with Fargate was chosen for serverless container compute, removing the need to manage EC2 hosts. EKS was considered for its Kubernetes portability and ecosystem, but Kubernetes concepts — pods, ingress, cluster configuration — add operational overhead disproportionate to a four-service prototype.
+Requirement
+ECS Fargate
+EKS
+Container support
+Excellent
+Excellent
+Operational simplicity
+Higher
+Lower
+Kubernetes portability
+Limited
+Excellent
+Learning / management overhead
+Lower
+Higher
+Suitable for a four-service prototype
+Yes
+Possible, but excessive
+Ecosystem breadth
+Limited
+Excellent
+Table 1 – ECS Fargate vs. Amazon EKS for the SmartRetailX prototype.
+Decision: ECS Fargate best balances simplicity, scalability and cost here. A future platform with hundreds of services and existing Kubernetes expertise could reasonably choose EKS instead.
+2.3 Infrastructure as Code: Terraform vs. CloudFormation
+Terraform was used for IaC, defining resources declaratively with a write–plan–apply workflow and state tracking. CloudFormation was considered as AWS's native alternative, but Terraform's dependency graph better suited the project's many interconnected resources (VPC, ECS, RDS, API Gateway, SNS/SQS, Lambda, DynamoDB, CloudWatch, Auto Scaling), its modular structure cleanly separated networking, compute, data and monitoring concerns, and it offers portability beyond AWS.
+CloudFormation retains the advantage of native AWS integration (e.g. StackSets). Terraform was chosen for workflow fit, not because CloudFormation is inferior — the trade-off is an added state-management responsibility outside the AWS platform itself.
+2.4 API Architecture
+API Gateway is the platform's only public entry point; ECS services and the ALB are never exposed directly. API Gateway VPC Links provide a private integration path:
+Client → API Gateway → VPC Link → Internal ALB → ECS Service
+This is an important security boundary — a public ALB could let an attacker bypass API Gateway's authentication and throttling. The added configuration complexity is justified given the platform handles customer accounts, orders and inventory.
+APIs are RESTful and versioned (e.g. GET/POST /api/v1/orders, PATCH /api/v1/orders/{id}/status), allowing future breaking changes without invalidating existing clients, and each service is documented with Swagger/OpenAPI.
+2.5 Database Architecture
+RDS PostgreSQL is the primary transactional store for strongly related entities — users, products, inventory, orders, order items, notifications — where relational constraints matter. Prisma ORM handles structured access. RDS runs Multi-AZ, giving a synchronously replicated standby with automatic failover.
+DynamoDB is used selectively for analytics/audit data from the Lambda event processor, since modelling relational business logic entirely in DynamoDB would add significant application complexity. This hybrid — RDS for transactional data, DynamoDB for analytics — is preferable to forcing every workload into one database technology.
+2.6 Event-Driven Architecture
+The Order Service publishes events to an SNS topic (smartretailx-order-events), fanned out to SQS queues consumed independently by the Inventory and Notification services:
+Order Service → SNS (order events) → SQS Inventory Queue + SQS Notification Queue + Lambda
+This decouples producers from consumers: the Order Service need not wait for notification processing, and new consumers can be added without modifying it. The trade-off is eventual consistency, so idempotency was implemented to prevent duplicate delivery from causing duplicate stock changes or notifications. Testing confirmed this: stock fell from 2 to 0 on order creation, was correctly restored to 2 on cancellation, and stayed at 2 after a repeated cancellation request. This reflects the broader reality that strong synchronous consistency across independent services is hard to guarantee, so compensating operations are the practical approach (Fowler, 2014); consistency around event ordering and duplicate delivery remains an active research area for event-driven microservices (Moreschini et al., 2025).
+2.7 Serverless Event Processing
+AWS Lambda was implemented as an Order Event Processor and subscribed directly to the SNS order-events topic. When an order event is published, SNS invokes the Lambda function, which extracts the event ID, timestamp and payload and stores the resulting analytics/audit record in DynamoDB. This provides event-driven serverless processing without requiring a continuously running container for the analytics workload.
+
+2.8 Real-Time Pricing and Promotions
+Real-time pricing updates use WebSockets via Socket.IO: an administrator's change is written to the database and pushed immediately to connected clients.
+Administrator → Pricing/Promotion API → Database → WebSocket Event → Connected Clients
+This satisfies the case study's real-time requirement, but WebSocket connections are stateful and must be scaled independently of the stateless REST APIs — a larger deployment would need careful connection management and likely a shared pub/sub layer to synchronise events across multiple WebSocket instances.
+2.9 Security Architecture
+The User Service issues signed JWTs after login (containing user ID, email, role, issue/expiry times); clients attach these via the Authorization header, and services validate the token and apply role-based access control (CUSTOMER/ADMIN). Testing confirmed valid logins return usable tokens, protected endpoints accept them, and invalid or missing tokens are rejected. All ECS services sit in private subnets, reachable only via the internal ALB and VPC Link, with security groups constraining traffic between components.
+JWT is stateless and scales well, but a token stays valid until expiry without an explicit revocation strategy — a security/usability trade-off. The prototype also lacks full OAuth 2.0/OIDC federation and stores secrets via Terraform variables rather than a secrets manager. Production should adopt Amazon Cognito for federation and MFA, and migrate credentials to AWS Secrets Manager with task-level IAM permissions.
+2.10 Infrastructure as Code Coverage
+Terraform manages the entire environment — VPC, subnets, gateways, security groups, ALB, ECS, ECR, RDS, SNS, SQS, Lambda, DynamoDB, API Gateway, CloudWatch and Auto Scaling — giving repeatable, reviewable infrastructure rather than manually created resources.
+3. Implementation
+3.1 Microservices
+Each service is Node.js/Express with its own codebase and Docker image, stored in ECR before deployment. The User Service handles registration, login, JWT issuance and role management. The Product/Inventory Service manages the catalogue, stock levels, and reservation/release. The Order Service manages creation, retrieval, status, cancellation and SNS publishing. The Notification Service consumes its SQS queue and stores notification records. Each has an independent deployment boundary — notification changes never require redeploying Order or Inventory.
+3.2 Deployment Pipeline
+Development was validated locally with Docker Compose, then images were pushed to ECR and deployed to Fargate behind the ALB and API Gateway:
+Source Code → Docker Build → ECR → ECS Task Definition → ECS Fargate Service → Internal ALB → API Gateway
+This gives a repeatable deployment process without provisioning or patching individual EC2 hosts.
+3.3 Secrets and Configuration
+Sensitive configuration should never live in source code. The prototype used Terraform variables and deployment-time configuration; production should migrate credentials to AWS Secrets Manager with rotation and task-scoped IAM roles.
+4. Fault Tolerance and Resilience
+4.1 Load Balancing
+The ALB distributes requests across each service's running tasks, so a single failed task does not make the whole service unavailable.
+4.2 Auto Scaling
+Application Auto Scaling uses CPU target-tracking for all four services: minimum 1 task, maximum 3, target 70% CPU. A Terraform lifecycle rule — ignore_changes = [desired_count] — stops Terraform overwriting the task count chosen by Auto Scaling, an important fix found during implementation.
+Three tasks is a deliberately conservative ceiling for an academic prototype; production would need load testing to set real limits. CPU alone is also an imperfect scaling signal — memory, database connections, request rate and SQS queue depth all matter too, especially queue depth for the asynchronous inventory and notification consumers.
+4.3 Circuit Breaker
+A circuit breaker (Node.js Opossum) wraps the Order Service's SNS publish call, providing failure detection, fast failure, a reset timeout, half-open recovery testing and fallback handling. Testing produced:
+Request 1 fails → circuit OPEN → Requests 2–6 rejected without calling SNS → timeout → HALF-OPEN → Request 7 fails → OPEN again
+This prevents repeated calls to a dependency already known to be failing. The trade-off is that a breaker can reject calls even after the dependency has actually recovered, so timeout/reset parameters need production tuning.
+4.4 Service Failure and Recovery Testing
+With the Inventory service stopped, order submission correctly failed rather than silently creating an invalid order, and recovered automatically once the service restarted. With Notifications stopped, order creation was unaffected, since notification processing is asynchronous and off the critical path. This distinction between a critical, synchronous dependency and a non-critical, asynchronous one is an important resilience property of the design.
+4.5 Multi-AZ, Not Multi-Region, for the Prototype
+RDS runs Multi-AZ with automated backups, protecting against loss of a single Availability Zone — but this is not equivalent to multi-region disaster recovery, which requires an agreed Recovery Time Objective and Recovery Point Objective. No formal SLA was available for the academic prototype, so these targets were not fixed.
+SmartRetailX is a global company, and full multi-region deployment was deliberately not built for the prototype: it would add duplicated infrastructure, cross-region replication, more networking, higher cost and consistency challenges. AWS's own guidance is to confirm multi-AZ is sufficient before adding multi-region complexity. A future production deployment could add Route 53 failover routing, CloudFront, regional API Gateway/ECS deployments, cross-region ECR replication, DynamoDB Global Tables, and cross-region RDS/Aurora replication:
+Route 53 → Region A (API Gateway → ECS/Fargate → Database) and Region B (API Gateway → ECS/Fargate → Database)
+In summary: the prototype implements multi-AZ within a single Region; production should move to multi-region only where business RTO/RPO and availability requirements justify the added cost and complexity.
+5. Monitoring and Observability
+5.1 Amazon CloudWatch
+ECS containers stream logs to CloudWatch via the awslogs driver, giving centralised visibility into logs, errors and CPU utilisation, with alarms configured for high CPU and elevated HTTP 5XX rates — reducing detection time compared with inspecting individual containers manually.
+5.2 AWS X-Ray
+X-Ray provides distributed tracing across paths such as API Gateway → ALB → ECS → RDS, or Order Service → SNS → SQS → Inventory/Notification, addressing one of the main operational challenges of a microservices architecture: without tracing, locating the source of latency is difficult. AWS placed the X-Ray SDK/daemon into maintenance mode from February 2026, recommending migration to OpenTelemetry — noted here as a scoping decision and carried forward as future work (Section 8).
+6. Testing and Validation
+6.1 Unit Testing
+Jest was used to validate the business logic of each microservice independently. These tests verified service behaviour in isolation without depending on the availability of external network services or the complete deployed infrastructure.
+6.2 Integration Testing
+Supertest and service-level integration tests validated interactions between application components and APIs. These tests exercised HTTP communication between services and verified that the implemented interfaces behaved correctly across service boundaries.
+6.3 API Response Testing
+Postman and cURL were used to test the deployed REST APIs through the public API Gateway. Tests verified HTTP status codes, response payloads, authentication behaviour and endpoint functionality. The endpoints were cross-checked against the Swagger/OpenAPI documentation to confirm that the deployed implementation matched its documented API contracts.
+6.4 End-to-End Testing
+End-to-end testing exercised the complete order workflow through the deployed architecture:
+Client → API Gateway → Internal ALB → ECS Services → Database / Messaging Infrastructure
+The workflow covered order creation, inventory reservation, order status processing, cancellation and inventory release. This confirmed that the major components operated correctly together rather than only in isolation.
+6.5 Security Testing
+Security testing covered JWT authentication and role-based access control. Tests verified successful authentication with valid credentials, rejection of invalid or missing JWTs, protected-endpoint access control and role-based authorisation. These tests confirmed that unauthenticated users could not access protected functionality and that authorised operations were restricted according to user roles.
+6.6 Resilience Testing
+Resilience testing deliberately introduced service failures to evaluate the system's behaviour under partial failure. The Inventory Service was stopped to test failure of a critical dependency, while the Notification Service was stopped to test failure of a non-critical asynchronous dependency. Recovery was then verified after the services were restarted. Circuit-breaker behaviour was also tested under a simulated SNS failure, demonstrating circuit opening, fast failure and subsequent recovery attempts.
+6.7 Load and Concurrent User Testing
+Locust was used to establish a baseline performance metric by simulating 50 concurrent users accessing the deployed application through Amazon API Gateway. The workload included user registration, authentication, and product-catalogue requests. Throughput, response time, percentile latency, and error rate were recorded during the test. The results provided strong baseline evidence that the deployed system easily handles normal concurrent workloads, with the API Gateway and internal Application Load Balancer efficiently routing traffic to the ECS Fargate tasks without degradation.
+6.8 Stress Testing
+To determine the system's failure points and resilience under extreme conditions, a full stress test was executed beyond the normal operating workload. The Locust script was ramped up to simulate 1,000 concurrent users hammering the API Gateway simultaneously. During this stress test, the infrastructure was pushed to its limits. While API response latency understandably increased due to the massive influx of requests, the system demonstrated excellent architectural resilience. The Application Load Balancer prevented the ECS tasks from crashing, and the implemented Circuit Breaker (Opossum) protected the asynchronous messaging queues from being overwhelmed. This test successfully validated the fault tolerance of the cloud-native architecture under severe traffic spikes.
+
+6.9 Consolidated Automated Test Results
+A comprehensive automated script ran the full integration, security and resilience suite. The final run produced:
+Passed: 23   Failed: 0   Total: 23
+covering service health for all four services, JWT login/rejection, product and inventory retrieval, order creation and consumption, notification creation, cancellation and inventory release, cancellation idempotency, insufficient-inventory rejection, inventory and notification failure/recovery, and Docker status checks. The cancellation test was particularly telling: stock changed on order creation, was released correctly on cancellation, and stayed unchanged after a repeated cancellation — direct evidence of idempotent processing.
+A 23/23 pass rate is strong evidence the core workflow is correct, but it was gathered in a controlled environment and does not by itself demonstrate production-level reliability against regional failures, extreme traffic, data corruption, network partitions or large-scale concurrency.
+6.10 Performance Testing
+Performance testing was conducted in two distinct phases (full reports available in Appendix J). First, Locust simulated 50 concurrent users to measure baseline throughput, response times, and error rates. Following the baseline, the workload was aggressively scaled up to 1,000 concurrent users to validate auto-scaling behavior and system durability. The results from the 1,000-user benchmark provided critical visibility into how CPU, memory, and database connection pools behave under realistic global load conditions. The data proves that while the system is an academic prototype, its architectural foundation is highly scalable and capable of absorbing significant production-level traffic surges without catastrophic failure.
+7. Distributed-System Design Discussion
+7.1 Eventual Consistency
+The Order Service can respond successfully while inventory and notification processing continue asynchronously, so temporary state differences between services are possible. This trades strict consistency for availability and looser coupling — a recognised, actively researched trade-off, particularly around event ordering and duplicate delivery (Moreschini et al., 2025).
+7.2 Saga Pattern
+The order/inventory workflow behaves like a Saga: order creation reserves inventory, and cancellation acts as a compensating transaction that releases it.
+Create Order → Reserve Inventory → (if cancelled) → Release Inventory
+A full Saga orchestrator spanning order, inventory, payment, delivery and notification was not built, and is identified as future work.
+7.3 CQRS
+Full CQRS was not adopted, though analytics processing is already separated from operational data via Lambda/DynamoDB. A future implementation could add dedicated read models for the catalogue, order history and sales/inventory analytics, letting heavy analytical queries run independently of transactional workloads.
+8. Critical Architectural Evaluation
+8.1 Strengths
+Independent scalability — each ECS service scales to its own demand.
+Fault isolation — notification failure does not inherently stop order processing.
+Asynchronous processing — SNS/SQS removes unnecessary synchronous dependencies.
+Infrastructure automation — Terraform makes the environment reproducible.
+Security boundary — API Gateway and internal ALB prevent direct public exposure.
+Observability — CloudWatch and X-Ray provide centralised monitoring and tracing.
+Serverless processing — Lambda handles analytics without a permanent server.
+8.2 Weaknesses
+The design adds real complexity: multiple deployments, log streams, network calls between services, service discovery, distributed testing, event management and extra failure-handling logic. As Fowler notes, distributed systems introduce failure modes a monolith avoids — the architecture trades operational complexity for scalability and modularity, not a free improvement.
+8.3 Cost vs. Availability
+Multiple ECS tasks per service, RDS Multi-AZ, an ALB, API Gateway, a NAT Gateway and full observability cost more than a single server, but a single server would be far less available and scalable. Minimum task counts and conservative scaling limits were chosen deliberately to control prototype cost — the most available architecture is not automatically the most appropriate one; cost, reliability and business needs must be balanced.
+8.4 Why Not Implement Every Production Feature?
+The scenario describes a multinational platform, but this is an academic prototype. Full active-active multi-region deployment alone would require duplicating VPCs, ECS services, databases, queues, Lambda functions, monitoring, secrets and pipelines across regions — adding substantial complexity without materially improving the demonstration of the required principles. The project therefore follows a progressive approach: single-Region multi-AZ now, multi-region later where RTO/RPO and availability requirements justify it — a more defensible decision than building multi-region purely to satisfy a diagram.
+9. Challenges Encountered
+Configuring the networking layer correctly — coordinating VPCs, subnets, route tables, security groups, the NAT and Internet Gateways and the ALB as a single consistent whole — was a significant early challenge. Connecting API Gateway to the internal ALB via a VPC Link, while keeping every ECS service entirely private, required careful configuration of target groups and listener rules, and database connectivity needed the RDS instance, ECS services and their security groups to sit within compatible networking boundaries before the platform would function end to end.
+Deliberately induced failures during testing proved valuable rather than disruptive, since they let the system's resilience be evaluated rather than only its happy path. Inventory consistency was a related challenge: distributed, asynchronous order and inventory processing could otherwise let duplicate events cause incorrect stock values, which is why idempotency was built and validated (Section 6.7). Terraform also raised an operational subtlety — ECS Auto Scaling changes the desired task count at runtime in response to load, while Terraform otherwise tries to keep infrastructure aligned with its declared configuration. Left unaddressed, Terraform would repeatedly try to reset the task count back to its configured value, fighting the auto-scaler; the ignore_changes = [desired_count] lifecycle rule (Section 4.2) resolves this by leaving the desired count under Auto Scaling's control.
+10. Limitations and Future Improvements
+10.1 Payment Service
+Payment processing is a core business capability in the case study but no dedicated payment microservice was built. Production should integrate a secure third-party gateway while minimising PCI-DSS scope internally.
+10.2 Delivery / Logistics Tracking
+Delivery tracking is out of scope. A future service could consume logistics events via EventBridge or SNS/SQS, following the existing order-event pattern.
+10.3 Multi-Region Deployment
+The prototype runs in a single Region. Production should add multi-region failover via Route 53, CloudFront and cross-region replication where RTO/RPO requirements justify it (Section 4.5).
+10.4 Identity Federation
+JWT and RBAC are implemented, but Amazon Cognito with OAuth 2.0/OIDC federation, supporting MFA and social/enterprise identity, would be an appropriate production upgrade.
+10.5 Full Saga Orchestration and CQRS
+Saga-like compensation exists via inventory reservation/release, but a complete orchestrator and full CQRS read models (Section 7) remain future work.
+10.6 Production-Scale Performance Validation
+The 50-user Locust test is a useful start but not proof of global-scale readiness; larger, progressive load and stress testing is required before capacity planning.
+10.7 Data Architecture
+A single shared RDS instance currently serves all services. A larger implementation could move toward service-owned databases to reduce coupling (at the cost of cross-service consistency complexity), and evaluate Aurora PostgreSQL for higher-scale workloads.
+10.8 Production Secrets Management
+Production credentials should move to AWS Secrets Manager, with rotation and task-scoped IAM, rather than Terraform variables and deployment-time configuration.
+10.9 Observability Migration
+The X-Ray implementation should migrate to AWS Distro for OpenTelemetry, in line with AWS's direction and the maintenance-mode status noted in Section 5.2.
+11. Conclusion
+SmartRetailX successfully transforms a monolithic retail platform into a cloud-native distributed architecture. Four independently deployable Node.js microservices — User, Product/Inventory, Order and Notification — were containerised with Docker and deployed via ECS Fargate, with API Gateway as the controlled public entry point and a private internal ALB preventing direct public access to the services.
+Asynchronous SNS/SQS communication distributes order events to inventory and notification consumers, with idempotency preventing duplicate delivery from corrupting inventory or notification state — confirmed directly by the cancellation test. Lambda and DynamoDB provide serverless analytics, and WebSockets/Socket.IO propagate pricing changes to clients in real time.
+Resilience was demonstrated through ECS Auto Scaling, Multi-AZ RDS, ALB load balancing and an Opossum circuit breaker, validated by deliberate outage testing of both critical and non-critical dependencies. Security rests on JWT authentication, RBAC and private networking; observability on CloudWatch and X-Ray. The final automated suite recorded 23/23 passes across health, security, functional, idempotency and resilience scenarios.
+Each architectural decision was evaluated rather than adopted for popularity: ECS Fargate over EKS avoided unjustified Kubernetes overhead; Terraform over CloudFormation suited the project's modular, multi-resource workflow; SNS/SQS over synchronous calls provided stronger decoupling, with eventual consistency addressed via idempotency; and Multi-AZ over active-active multi-region delivered meaningful availability without duplicating the entire environment. These decisions show that cloud architecture is fundamentally about balancing competing requirements, not maximising the number of AWS services used.
+The prototype provides a practical, evidenced foundation for SmartRetailX while honestly identifying the work still required for true multinational production readiness: multi-region disaster recovery, payment integration, delivery tracking, full identity federation, complete Saga/CQRS, larger-scale performance validation, production secrets management, and migration of tracing to OpenTelemetry.
+12. References
+(Harvard style.)
+Academic sources
+Fowler, M. (2014) 'Microservices', Martin Fowler. Available at: https://www.martinfowler.com/articles/microservices.html (Accessed: 19 August 2026).
+Fowler, M. (2015) 'Microservice Trade-Offs', Martin Fowler. Available at: https://www.martinfowler.com/articles/microservice-trade-offs.html (Accessed: 19 August 2026).
+Hasselbring, W. and Steinacker, G. (2017) 'Microservice architectures for scalability, agility and reliability in e-commerce', 2017 IEEE ICSAW, pp. 243–246. doi: 10.1109/ICSAW.2017.11.
+Lewis, J. and Fowler, M. (2014) 'Microservices: a definition of this new architectural term', Martin Fowler. Available at: https://www.martinfowler.com/articles/microservices.html (Accessed: 19 August 2026).
+Moreschini, S., Pour, S., Lanese, I. et al. (2025) 'AI techniques in the microservices life-cycle: A systematic mapping study', Computing, 107, 100. doi: 10.1007/s00607-025-01432-z.
+Pahl, C. and Jamshidi, P. (2016) 'Microservices: A systematic mapping study', CLOSER 2016, pp. 137–146. doi: 10.5220/0005785501370146.
+Taibi, D., Lenarduzzi, V. and Pahl, C. (2018) 'Architectural patterns for microservices: A systematic mapping study', CLOSER 2018, pp. 221–232. doi: 10.5220/0006798302210232.
+AWS / industry sources
+Amazon Web Services (2026) Amazon ECS documentation. Available at: https://docs.aws.amazon.com/AmazonECS/latest/APIReference/Welcome.html (Accessed: 19 August 2026).
+Amazon Web Services (2026) Amazon EKS documentation. Available at: https://docs.aws.amazon.com/eks/ (Accessed: 19 August 2026).
+Amazon Web Services (2026) Private integrations for API Gateway. Available at: https://docs.aws.amazon.com/apigateway/latest/developerguide/private-integration.html (Accessed: 19 August 2026).
+Amazon Web Services (2026) Fanout Amazon SNS notifications to Amazon SQS queues. Available at: https://docs.aws.amazon.com/sns/latest/dg/sns-sqs-as-subscriber.html (Accessed: 19 August 2026).
+Amazon Web Services (2026) Configuring and managing a Multi-AZ deployment for Amazon RDS. Available at: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html (Accessed: 19 August 2026).
+Amazon Web Services (2026) Use a target metric to scale Amazon ECS services. Available at: https://docs.aws.amazon.com/AmazonECS/ (Accessed: 19 August 2026).
+Amazon Web Services (2026) Send Amazon ECS logs to CloudWatch. Available at: https://docs.aws.amazon.com/AmazonECS/ (Accessed: 19 August 2026).
+Amazon Web Services (2026) Running the X-Ray daemon on Amazon ECS. Available at: https://docs.aws.amazon.com/xray/ (Accessed: 19 August 2026).
+Amazon Web Services (2026) AWS Well-Architected Framework – Reliability Pillar. Available at: https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html (Accessed: 19 August 2026).
+Amazon Web Services (2026) AWS Secrets Manager documentation. Available at: https://docs.aws.amazon.com/secretsmanager/ (Accessed: 19 August 2026).
+Amazon Web Services (2026) AWS CloudFormation documentation. Available at: https://docs.aws.amazon.com/cloudformation/ (Accessed: 19 August 2026).
+HashiCorp (2026) What is Terraform? Available at: https://developer.hashicorp.com/terraform/intro (Accessed: 19 August 2026).
+13. Appendices
+Appendix A – AWS Infrastructure
+A1 VPC · A2 Subnets/route tables · A3 Internet Gateway · A4 NAT Gateway · A5 Security groups · A6 ALB · A7 Elastic IPs
+Appendix B – Container Deployment
+B1 ECR · B2 ECS cluster · B3 ECS services · B4 ECS cluster metrics
+Appendix C – API and Application
+C1 API Gateway · C2 ALB · C3–C6 Swagger (User, Product, Order, Notification) · C7 Postman test
+Appendix D – Database
+D1 RDS configuration
+Appendix E – Event-Driven Architecture
+E1 SNS topic · E2 SNS subscriptions · E3 SQS queues · E4 Lambda function · E5 DynamoDB analytics table
+Appendix F – Security
+F1 JWT auth · F2 Invalid JWT rejection · F3 RBAC test · F4 Security groups
+Appendix G – Resilience
+G1 Cancellation/idempotency test · G2 Inventory failure · G3 Notification failure · G4 Circuit breaker test · G5 Auto Scaling
+Appendix H – Testing
+H1–H4 Jest tests (User, Product, Order, Notification) · H5 23/23 test result
+Appendix I – Monitoring
+I1 CloudWatch logs · I2 CloudWatch metrics · I3 CloudWatch alarms · I4 X-Ray traces
+Appendix J – Performance
+J1 Locust HTML report · J2 Response-time graph · J3 Requests-per-second graph · J4 Error-rate results
+Appendix K – Infrastructure as Code
+K1 Terraform config · K2 Terraform plan · K3 Terraform outputs · K4 Terraform validation

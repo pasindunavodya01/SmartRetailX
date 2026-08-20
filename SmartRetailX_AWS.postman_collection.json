@@ -1,6 +1,6 @@
 {
 	"info": {
-		"name": "SmartRetailX AWS Cloud",
+		"name": "SmartRetailX AWS Cloud Final",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -11,6 +11,7 @@
 					"name": "Health Check",
 					"request": {
 						"method": "GET",
+						"header": [],
 						"url": {
 							"raw": "{{ALB_URL}}/api/v1/health",
 							"host": [
@@ -25,6 +26,25 @@
 					}
 				},
 				{
+					"name": "Swagger Docs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/users/docs",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"docs"
+							]
+						}
+					}
+				},
+				{
 					"name": "Register User",
 					"request": {
 						"method": "POST",
@@ -34,10 +54,6 @@
 								"value": "application/json"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"clouduser@smartretailx.com\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"Cloud\",\n  \"lastName\": \"User\"\n}"
-						},
 						"url": {
 							"raw": "{{ALB_URL}}/api/v1/auth/register",
 							"host": [
@@ -49,6 +65,10 @@
 								"auth",
 								"register"
 							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"clouduser@smartretailx.com\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"Cloud\",\n  \"lastName\": \"User\"\n}"
 						}
 					}
 				},
@@ -62,10 +82,6 @@
 								"value": "application/json"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"clouduser@smartretailx.com\",\n  \"password\": \"Password123!\"\n}"
-						},
 						"url": {
 							"raw": "{{ALB_URL}}/api/v1/auth/login",
 							"host": [
@@ -77,6 +93,58 @@
 								"auth",
 								"login"
 							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"clouduser@smartretailx.com\",\n  \"password\": \"Password123!\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/users/me",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"me"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Admin Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/admin/dashboard",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"dashboard"
+							]
 						}
 					}
 				}
@@ -86,9 +154,52 @@
 			"name": "Product Inventory Service",
 			"item": [
 				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/health",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"health"
+							]
+						}
+					}
+				},
+				{
+					"name": "Swagger Docs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/products/docs",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"products",
+								"docs"
+							]
+						}
+					}
+				},
+				{
 					"name": "List Products",
 					"request": {
 						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
 						"url": {
 							"raw": "{{ALB_URL}}/api/v1/products",
 							"host": [
@@ -103,23 +214,19 @@
 					}
 				},
 				{
-					"name": "Create Product (Requires Admin)",
+					"name": "Create Product",
 					"request": {
 						"method": "POST",
 						"header": [
 							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
 								"key": "Authorization",
 								"value": "Bearer {{JWT_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"sku\": \"PROD-001\",\n  \"name\": \"Smart Watch\",\n  \"price\": 199.99\n}"
-						},
 						"url": {
 							"raw": "{{ALB_URL}}/api/v1/products",
 							"host": [
@@ -130,38 +237,226 @@
 								"v1",
 								"products"
 							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sku\": \"PROD-001\",\n  \"name\": \"Smart Watch\",\n  \"description\": \"A smart watch\",\n  \"price\": 199.99,\n  \"category\": \"Electronics\"\n}"
 						}
 					}
 				},
 				{
-					"name": "Add Inventory (Requires Admin)",
+					"name": "Get Product by ID",
 					"request": {
-						"method": "POST",
+						"method": "GET",
 						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
 							{
 								"key": "Authorization",
 								"value": "Bearer {{JWT_TOKEN}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"sku\": \"PROD-001\",\n  \"quantity\": 50\n}"
-						},
 						"url": {
-							"raw": "{{ALB_URL}}/api/v1/internal/inventory/adjust",
+							"raw": "{{ALB_URL}}/api/v1/products/<PRODUCT_ID>",
 							"host": [
 								"{{ALB_URL}}"
 							],
 							"path": [
 								"api",
 								"v1",
-								"internal",
+								"products",
+								"<PRODUCT_ID>"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Product by SKU",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/products/sku/PROD-001",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"products",
+								"sku",
+								"PROD-001"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Product",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/products/<PRODUCT_ID>",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"products",
+								"<PRODUCT_ID>"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"price\": 189.99\n}"
+						}
+					}
+				},
+				{
+					"name": "Delete Product",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/products/<PRODUCT_ID>",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"products",
+								"<PRODUCT_ID>"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Inventory",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/inventory",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"inventory"
+							]
+						}
+					}
+				},
+				{
+					"name": "Adjust Inventory",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/inventory/adjust",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
 								"inventory",
 								"adjust"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"productId\": \"<PRODUCT_ID>\",\n  \"quantity\": 50,\n  \"reason\": \"Restock\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Apply Promotion",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/products/promotions",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"products",
+								"promotions"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"discountPercentage\": 10,\n  \"reason\": \"Holiday Sale\"\n}"
+						}
+					}
+				},
+				{
+					"name": "End Promotion",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/products/promotions/<PROMOTION_ID>",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"products",
+								"promotions",
+								"<PROMOTION_ID>"
 							]
 						}
 					}
@@ -172,32 +467,38 @@
 			"name": "Order Service",
 			"item": [
 				{
-					"name": "Create Order",
+					"name": "Health Check",
 					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{JWT_TOKEN}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"items\": [\n    {\n      \"sku\": \"PROD-001\",\n      \"quantity\": 2,\n      \"price\": 199.99\n    }\n  ]\n}"
-						},
+						"method": "GET",
+						"header": [],
 						"url": {
-							"raw": "{{ALB_URL}}/api/v1/orders",
+							"raw": "{{ALB_URL}}/api/v1/health",
 							"host": [
 								"{{ALB_URL}}"
 							],
 							"path": [
 								"api",
 								"v1",
-								"orders"
+								"health"
+							]
+						}
+					}
+				},
+				{
+					"name": "Swagger Docs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/orders/docs",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"orders",
+								"docs"
 							]
 						}
 					}
@@ -221,6 +522,413 @@
 								"api",
 								"v1",
 								"orders"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/orders",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"orders"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"items\": [\n    {\n      \"productId\": \"<PRODUCT_ID>\",\n      \"quantity\": 2\n    }\n  ],\n  \"shippingAddress\": \"123 Test St\",\n  \"billingAddress\": \"123 Test St\",\n  \"paymentMethod\": \"CREDIT_CARD\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Get Order by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/orders/<ORDER_ID>",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"orders",
+								"<ORDER_ID>"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Order",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/orders/<ORDER_ID>",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"orders",
+								"<ORDER_ID>"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"customerId\": \"<NEW_CUSTOMER_ID>\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Update Order Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/orders/<ORDER_ID>/status",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"orders",
+								"<ORDER_ID>",
+								"status"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"CANCELLED\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Simulate Delivery Tracking Update",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/orders/<ORDER_ID>/tracking",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"orders",
+								"<ORDER_ID>",
+								"tracking"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"SHIPPED\",\n  \"location\": \"Distribution Center\"\n}"
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Notification Service",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/health",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"health"
+							]
+						}
+					}
+				},
+				{
+					"name": "Swagger Docs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/notifications/docs",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications",
+								"docs"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Internal Notification",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/internal/notifications",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"internal",
+								"notifications"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"<USER_ID>\",\n  \"type\": \"SYSTEM_ALERT\",\n  \"message\": \"System restart initiated.\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Get Notifications by User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/notifications/users/<USER_ID>",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications",
+								"users",
+								"<USER_ID>"
+							]
+						}
+					}
+				},
+				{
+					"name": "List All Notifications",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/notifications",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Notification",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/notifications",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"<USER_ID>\",\n  \"type\": \"PROMO\",\n  \"message\": \"50% off today!\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Get Notification by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/notifications/<NOTIFICATION_ID>",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications",
+								"<NOTIFICATION_ID>"
+							]
+						}
+					}
+				},
+				{
+					"name": "Mark Notification as Read",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/notifications/<NOTIFICATION_ID>/read",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications",
+								"<NOTIFICATION_ID>",
+								"read"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Notification",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/notifications/<NOTIFICATION_ID>",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications",
+								"<NOTIFICATION_ID>"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"message\": \"Updated promo message\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Delete Notification",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{ALB_URL}}/api/v1/notifications/<NOTIFICATION_ID>",
+							"host": [
+								"{{ALB_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications",
+								"<NOTIFICATION_ID>"
 							]
 						}
 					}
